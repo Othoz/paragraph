@@ -166,7 +166,7 @@ Glossary
     backward traversal
         `Breadth-first <https://en.wikipedia.org/wiki/Breadth-first_search>`_ :term:`traversal` of a computation graph, where a dependency occurs after all
         the variables depending on it, directly or transitively. In this order, information can be backward propagated through the graph.
-"""
+
 
 Development Environment Setup
 =============================
