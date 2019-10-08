@@ -1,18 +1,16 @@
 Overview
 ========
 
-othoz-paragraph is a pure Python micro-framework supporting seamless lazy and parallel evaluation and parallelism of computation graphs.
+othoz-paragraph is a pure Python micro-framework supporting seamless lazy and concurrent evaluation of computation graphs.
 
-In essence, this package allows to write *functional* code in Python, whose actual execution is deferred, lazy and parallel, by relating *variables* whose
-values may not be known before execution time. Such constructs come in handy under the following cumulative conditions:
+In essence, the package allows to write *functional* code directly in Python: statements merely specify relationships among *variables* through *operations*.
+Evaluation of any variable given the values of other variables is then de facto:
 
-    - the code expresses stable yet complex, computation or IO intensive dependencies among a number of variables,
-    - common use cases require the evaluation of arbitrary subsets of these variables, the content of this subset being versatile and a priori unknown.
+  - **lazy**: only operations participating in the determination of the requested value are executed,
+  - **concurrent**: operations can be executed by a thread pool of arbitrary size.
 
-Under these conditions, the joint benefits of lazy and parallel evaluation balance the additional programming effort, since intermediate variables necessary to
-compute the requested results are automatically discovered and evaluated. Any computation branch that does not contribute to determining the value of the
-requested variable is not executed. In addition, relationships among variables can be traversed in both directions, allowing a form of backpropagation of
-information through the computation network that would be otherwise cumbersome to implement in an imperative manner.
+In addition, relationships among variables can be traversed in both directions, allowing a form of backpropagation of
+information through the computation network that would be cumbersome to implement in an imperative manner.
 
 A glossary is provided below, which should clarify most concepts implemented in this module. Note that the usage of some terms may slightly differ from
 their standard definitions, reading it through before diving into the code is therefore highly recommended irrespective of the reader's familiarity with the
@@ -25,7 +23,7 @@ Getting started
 Computation graphs are `bipartite graphs <https://en.wikipedia.org/wiki/Bipartite_graph>`_, where vertices of a one type, the variables (of type
 Variable), are connected together exclusively through vertices of another type, the operations (or simply ops, of type Op).
 
-Turning a regular Python function into an op is as simple as decorating it:
+In *paragraph*, turning a regular Python function into an op is as simple as decorating it:
 
 >>> @op
 ... def f(a, b):
@@ -33,65 +31,70 @@ Turning a regular Python function into an op is as simple as decorating it:
 
 The operation can then be applied to objects of both Variable and non-Variable type as follows:
 
->>> v1 = Variable()
->>> v2 = f(a=2, b=v1)
+>>> v1 = Variable("v1")
+>>> v2 = f(2, v1)
 
 Ops differ from regular Python functions in their behavior upon receiving an argument of type Variable. In such a case, they are not executed,
 but instead pack the knowledge required for deferred execution into an instance of Variable, and return this variable.
-Then, a variable can be evaluated by invoking the :func:`evaluate` function and passing in initialization values for the input variables alongside the target
-variable:
+Then, a variable can be evaluated by invoking the function :func:`othoz.paragraph.session.evaluate` and passing in initialization values for the input
+variables alongside the target variable:
 
->>> evaluate(v2, args={v1: 4})
-
-Graphs can be used to compose ops in a modular manner as follows:
-
->>> import string
->>> @attr.s
->>> class RepeatWord(Op):
-...     n = attr.ib(type=int, validator=instance_of(int))
-...
-...     def _run(self, word):
-...         return ", ".join([word] * self.n)
-...
->>> upper = op(string.capwords)
->>> @attr.s
->>> class CapitalizeAndRepeat(Graph):
-...     word = attr.ib(type=Variable, init=False, factory=Variable)
-...     output = attr.ib(type=Variable, init=False, factory=Variable)
-...
-...     def _build(self):
-...         repeater = RepeatWord(2)
-...
-...         self.word = Variable()
-...         up_word = upper(s=self.word)
-...
-...         self.output = repeater(word=up_word)
-...
->>> g = CapitalizeAndRepeat()
->>> evaluate(g.output, args={g.word: "word"})
-
-Note that classes defining Graphs may define the relationships among their attributes in any arbitrary manner, provided no cyclic dependency occurs among
-them. In particular, Graphs can have multiple outputs.
-
-Piecing together Graphs into larger ones goes like this:
-
->>> g1 = CapitalizeAndRepeat()
->>> g2 = CapitalizeAndRepeat()
->>> g2.input = g1.output
->>> evaluate(g2.output, args={g1.word: "word"})
+>>> value = evaluate([v2], args={v1: 4})
 
 
-Additional features
-===================
+Going further
+=============
 
-Parallel execution
+Partial evaluation
 ''''''''''''''''''
 
-Building upon the guarantees granted by a forward traversal, parallel execution of ops comes at no additional cost. This feature relies on the `concurrent`
-package from the Python standard library: ops are simply submitted to a thread pool for evaluation.
+When the arguments passed to :func:`othoz.paragraph.session.evaluate` are insufficient to resolve fully an output variable (that is, at least one transitive
+dependency of the output variable is left uninitialized), the value returned for the output variable is simply another variable. This new variable has in
+general fewer dependencies, for dependencies fully resolved upon evaluation are replaced by their values.
 
-By default, a single thread is used to exclude pitfalls stemming from thread unsafe computations. Provided all operations are thread-safe, setting `max_workers`
-to some value is all it takes to take full advantage of this feature.
+
+Mapping over inputs
+'''''''''''''''''''
+
+The function :func:`othoz.paragraph.session.apply` extends :func:`othoz.paragraph.session.evaluate` to take, in addition, an iterator over input arguments to
+the computation graph. It takes advantage of partial evaluation to reduce the number of operations evaluated at each iteration.
+
+
+Concurrency
+'''''''''''
+
+Building upon the guarantees granted by a forward traversal, concurrent execution of ops comes at no additional cost. This feature relies on the `concurrent`
+package from the Python standard library: ops are simply submitted to an instance of :class:`concurrent.futures.Executor` for evaluation. The executor should
+be provided externally and allow calling :class:`concurrent.futures.Future` methods from a submitted callable (in particular, this excludes
+:class:`concurrent.futures.ProcessPoolExecutor`). The responsibility for shutting down the executor properly lies on the user. In absence of an executor,
+variables are evaluated in a sequential manner, yet still lazily.
+
+Should an operation be executed in the main process, it can be marked as such by setting the attribute `Op.thread_safe` to False.
+
+Example usage:
+
+>>> ...graph definition...
+>>> with ThreadPoolExecutor() as ex:
+...     res = evaluate([output], args={input: input_value}, executor=ex)
+
+.. note::
+    Argument values passed to :func:`othoz.paragraph.session.evaluate` can be of type :class:`concurrent.futures.Future`, in which case the consuming
+    operations will simply block until the result is available.
+
+.. note::
+    Similarly, an executor can be passed to the function :func:`othoz.paragraph.session.apply`.
+
+
+Eager mode
+''''''''''
+
+Within the context manager `othoz.paragraph.session.eager_mode`, ops are executed eagerly: the underlying `_run` method is invoked directly rather than
+returning an instance of :class:`Variable`. In this mode, arguments of type `Variable` are generally not accepted. No concurrent evaluation occurs in eager
+mode.
+
+This mode is particularly useful when testing or debugging a computation graph without modifying the code defining it, by simply bypassing the machinery set
+up by the framework.
+
 
 Backward propagation
 ''''''''''''''''''''
@@ -107,17 +110,17 @@ requirements that should bear on the said variable argument.
 Requirements are substantiated by mixin classes, which add attributes and assume full responsibility for their proper aggregation. They are usually defined in
 the same module as the operations using them. Then, a *compound requirements* class is simply defined by:
 
-    >>> @attr.s
-    ... class MyRequirements(DateRangeRequirement, DatasetContentsRequirement):
-    ...     pass
+>>> @attr.s
+... class MyRequirements(DateRangeRequirement, DatasetContentsRequirement):
+...     pass
 
 A requirement class must define the method `merge(self, other)` that aggregates requirements (more accurately, the requirement attributes it defines) arising
 from multiple usages of the same variable. This method should fulfill a small number of properties documented in the base class.
 
 Once all components are in place, requirements can be backpropagated:
 
->>> reqs = solve_requirements(output=g2.output, output_requirements=MyRequirements(date_range=ExactRange("2001-01-01", "2001-02-01")))
->>> reqs[g1.input].date_range  # Holds the backpropagated required date_range
+>>> reqs = solve_requirements(output=v2, output_requirements=MyRequirements(date_range=ExactRange("2001-01-01", "2001-02-01")))
+>>> reqs[v1].date_range  # Holds the backpropagated required date_range
 
 
 Caveats
@@ -166,7 +169,7 @@ Glossary
     backward traversal
         `Breadth-first <https://en.wikipedia.org/wiki/Breadth-first_search>`_ :term:`traversal` of a computation graph, where a dependency occurs after all
         the variables depending on it, directly or transitively. In this order, information can be backward propagated through the graph.
-"""
+
 
 Development Environment Setup
 =============================
@@ -175,6 +178,7 @@ Running the code in the repository requires that you have set up your
 computer according to the standard Othoz development setup (conda, gcloud, …),
 see `Handbook V: Production + Development Infrastructure <https://docs.google.com/document/d/1yxAtV9DCNeiYpSIJF_iChZKd60XdGQfoKV6GiY07wJM/edit#heading=h.7z9b4drr2v0u>`_.
 
+
 Contribution guidelines
 =======================
 
@@ -182,8 +186,8 @@ Contribution guidelines
 * Code review: Use Bitbucket pull-requests to submit changes to this repository.
 
 
-Who do I talk to?
-=================
+Whom do I talk to?
+==================
 
 * Preferably use Slack to talk to bourguignon@othoz.com, richter@othoz.com or eitz@othoz.com
 * Repo owner or admin: bourguignon@othoz.com
