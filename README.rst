@@ -1,17 +1,15 @@
 Overview
 ========
 
-othoz-paragraph is a pure Python micro-framework supporting seamless lazy and parallel evaluation and parallelism of computation graphs.
+othoz-paragraph is a pure Python micro-framework supporting seamless lazy and parallel evaluation of computation graphs.
 
-In essence, this package allows to write *functional* code in Python, whose actual execution is deferred, lazy and parallel, by relating *variables* whose
-values may not be known before execution time. Such constructs come in handy under the following cumulative conditions:
+In essence, the package allows to write *functional* code directly in Python: statements merely specify relationships among *variables* through *operations*.
+Evaluation of any variable given the values of other variables is then de facto:
 
-    - the code expresses stable yet complex, computation or IO intensive dependencies among a number of variables,
-    - common use cases require the evaluation of arbitrary subsets of these variables, the content of this subset being versatile and a priori unknown.
+  - **lazy**: only operations participating in the determination of the requested value are executed,
+  - **parallel**: operations are executed by a thread pool of arbitrary size.
 
-Under these conditions, the joint benefits of lazy and parallel evaluation balance the additional programming effort, since intermediate variables necessary to
-compute the requested results are automatically discovered and evaluated. Any computation branch that does not contribute to determining the value of the
-requested variable is not executed. In addition, relationships among variables can be traversed in both directions, allowing a form of backpropagation of
+In addition, relationships among variables can be traversed in both directions, allowing a form of backpropagation of
 information through the computation network that would be otherwise cumbersome to implement in an imperative manner.
 
 A glossary is provided below, which should clarify most concepts implemented in this module. Note that the usage of some terms may slightly differ from
@@ -25,7 +23,7 @@ Getting started
 Computation graphs are `bipartite graphs <https://en.wikipedia.org/wiki/Bipartite_graph>`_, where vertices of a one type, the variables (of type
 Variable), are connected together exclusively through vertices of another type, the operations (or simply ops, of type Op).
 
-Turning a regular Python function into an op is as simple as decorating it:
+In *paragraph*, turning a regular Python function into an op is as simple as decorating it:
 
 >>> @op
 ... def f(a, b):
@@ -81,8 +79,8 @@ Piecing together Graphs into larger ones goes like this:
 >>> evaluate(g2.output, args={g1.word: "word"})
 
 
-Additional features
-===================
+Going further
+=============
 
 Parallel execution
 ''''''''''''''''''
@@ -166,7 +164,7 @@ Glossary
     backward traversal
         `Breadth-first <https://en.wikipedia.org/wiki/Breadth-first_search>`_ :term:`traversal` of a computation graph, where a dependency occurs after all
         the variables depending on it, directly or transitively. In this order, information can be backward propagated through the graph.
-
+"""
 
 Development Environment Setup
 =============================
