@@ -17,8 +17,8 @@ Possible types of changes are:
 - ``Security`` in case of vulnerabilities
 
 
-Unreleased
-----------
+0.1.0 - 09.10.2019
+------------------
 
 Added
 '''''
