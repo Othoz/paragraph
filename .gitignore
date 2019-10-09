@@ -16,5 +16,5 @@ docs/build
 .pytest_cache/
 
 # development egg
-othoz_ml.egg-info/*
+*.egg-info/*
 .eggs
