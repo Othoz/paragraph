@@ -55,7 +55,7 @@ pipelines:
 
             # Run integration tests only as unit tests are already run as part of the 'default' pipeline. Integration tests are not used to compute
             # coverage information and thus the call to pytest is extremely simple.
-            # othoz-common has no integration tests and running the call below results in an exit code != 0 resulting in a pipeline failure
+            # othoz-paragraph has no integration tests and running the call below results in an exit code != 0 resulting in a pipeline failure
             # - pytest -m integration
 
   tags:
@@ -79,7 +79,7 @@ pipelines:
         # Run all tests (unit + integration).
         # As coverage should only be compute for unit tests we separate that into two runs
         - pytest -m "not integration" --junit-xml=test-results/tests.xml --cov=othoz --cov-branch --cov-report=xml --cov-report=term
-        # othoz-common has no integration tests and running the call below results in an exit code != 0 resulting in a pipeline failure
+        # othoz-paragraph has no integration tests and running the call below results in an exit code != 0 resulting in a pipeline failure
         #- pytest -m integration
 
         # Build documentation and deploy to S3
