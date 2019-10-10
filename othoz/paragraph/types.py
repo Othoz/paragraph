@@ -140,7 +140,7 @@ class Op(ABC):
 
         static_args = dict(filterfalse(lambda x: isinstance(x[1], Variable), kwargs.items()))
 
-        return Variable(func=partial(self._run, **static_args), arg_requirements_func=self._arg_requirements, dependencies=var_args)
+        return Variable(func=partial(self, **static_args), arg_requirements_func=self._arg_requirements, dependencies=var_args)
 
 
 @attr.s

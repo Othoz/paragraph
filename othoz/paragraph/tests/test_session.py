@@ -99,14 +99,14 @@ class TestEvaluation:
         operation = graph.output.func.func
 
         assert res == "Return value"
-        operation.assert_called_once_with(arg="Input value")
+        operation._run.assert_called_once_with(arg="Input value")
 
     def test_evaluation_is_lazy(self, graph, max_workers):
         res = evaluate(graph.output, args={graph.output: "Input value"})
         operation = graph.output.func.func
 
         assert res == "Input value"
-        assert not operation.called
+        assert not operation._run.called
 
     def test_evaluation_across_subgraphs(self, make_graph, max_workers):
         g1 = make_graph()
@@ -116,7 +116,7 @@ class TestEvaluation:
         res = evaluate(g2.output, args={g1.input: "Input value"})
 
         assert res == "Return value"
-        g1.output.func.func.assert_called_once()
+        g1.output.func.func._run.assert_called_once()
 
 
 class TestRequirementSolving:
