@@ -16,6 +16,7 @@ Possible types of changes are:
 - ``Fixed`` for any bug fixes
 - ``Security`` in case of vulnerabilities
 
+
 Unreleased
 ----------
 
