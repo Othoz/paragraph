@@ -20,6 +20,10 @@ Possible types of changes are:
 Unreleased
 ----------
 
+
+0.1.0 - 09.10.2019
+------------------
+
 Added
 '''''
 
