@@ -26,7 +26,7 @@ def mock_op():
 @pytest.fixture
 def make_graph():
     def _make_graph():
-        graph = lambda: None
+        graph = lambda: None  # noqa: E731
         op1 = mock_op()
         graph.input = Variable()
         output1 = op1(arg=graph.input)
