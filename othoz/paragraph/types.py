@@ -23,22 +23,6 @@ class Variable:
     arg_requirements_func = attr.ib(type=Optional[Callable], default=lambda x, y: type(x)(), validator=optional(instance_of(Callable)))
     dependencies = attr.ib(type=Dict[str, Any], factory=dict)
 
-    def bind(self, other: "Variable"):
-        """Binds the instance to another variable.
-
-        This method allows to identify an input variable (i.e. a Variable instance without dependencies) with another variable. This method comes in handy
-        when embedding a predefined :class:`Graph` instance within a larger computation graph.
-        """
-
-        if len(self.dependencies) > 0:
-            raise ValueError("Variable is already bound to {}, cannot proceed.".format(self.func.func))
-
-        if not isinstance(other, Variable):
-            raise TypeError("Variables can only be bound to other variables, got argument of type {} instead.".format(type(other)))
-
-        self.func = lambda x: x
-        self.dependencies = {"x": other}
-
 
 @attr.s
 class Requirement(ABC):
@@ -141,50 +125,6 @@ class Op(ABC):
         static_args = dict(filterfalse(lambda x: isinstance(x[1], Variable), kwargs.items()))
 
         return Variable(func=partial(self, **static_args), arg_requirements_func=self._arg_requirements, dependencies=var_args)
-
-
-@attr.s
-class Graph(ABC):
-    """Base class representing a computation graph.
-
-    Graphs expose any number of Variables as attributes, at least one of which should be unbound (to serve as input). For the sake of readability,
-    the following idiom should be used, along with a docstring clearly stating which attributes are input (resp. output) variables:
-
-    >>> @attr.s
-    >>> class SimpleGraph(Graph):
-    ...     \"\"\"A graph computing a summary from data
-    ...
-    ...     Attributes:
-    ...         data: An input variable holding the data to summarize
-    ...         summary: An output variable, the summary of the data
-    ...     \"\"\"
-    ...     data = attr.ib(type=Variable, init=False, factory=Variable)
-    ...     summary = attr.ib(type=Variable, init=False)
-    ...
-    ...     def _build(self):
-    ...         v1 = compute_summary_op(self.data)
-    ...         self.summary = make_summary_op(v1, self.data)
-
-    Graph instances can be combined by binding the input of one to the output of another:
-
-    >>> g1 = SomeGraph()
-    >>> g2 = SomeOtherGraph()
-    >>> g2.input = g1.output
-    >>> evaluate(g2.output, {g1.input: some_value})
-    """
-
-    def __attrs_post_init__(self):
-        self._build()
-
-    @abstractmethod
-    def _build(self):
-        """The content of the graph, must be implemented by all concrete classes"""
-
-    def __setattr__(self, key, value: Variable):
-        if key in self.__dict__:
-            self.__dict__[key].bind(value)
-        else:
-            self.__dict__[key] = value
 
 
 def op(func: Callable) -> Callable:
