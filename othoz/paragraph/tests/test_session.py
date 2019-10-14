@@ -24,26 +24,18 @@ def mock_op():
 
 
 @pytest.fixture
-def make_graph():
-    def _make_graph():
-        graph = lambda: None  # noqa: E731
-        op1 = mock_op()
-        graph.input = Variable()
-        output1 = op1(arg=graph.input)
+def graph():
+    graph = lambda: None  # noqa: E731
+    op1 = mock_op()
+    graph.input = Variable()
+    output1 = op1(arg=graph.input)
 
-        op2 = mock_op()
-        output2 = op2(arg=graph.input)
+    op2 = mock_op()
+    output2 = op2(arg=graph.input)
 
-        graph.output = [output1, output2]
+    graph.output = [output1, output2]
 
-        return graph
-
-    return _make_graph
-
-
-@pytest.fixture
-def graph(make_graph):
-    return make_graph()
+    return graph
 
 
 class TestForwardGenerator:
