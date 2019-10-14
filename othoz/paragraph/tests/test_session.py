@@ -1,8 +1,8 @@
 import pytest
 import attr
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from othoz.paragraph.types import Requirement, Variable, Op, Graph
+from othoz.paragraph.types import Requirement, Variable, Op
 from othoz.paragraph.session import traverse_fw, traverse_bw, evaluate, solve_requirements
 
 
@@ -26,15 +26,17 @@ def mock_op():
 @pytest.fixture
 def make_graph():
     def _make_graph():
-        operation = mock_op()
+        graph = lambda: None
+        op1 = mock_op()
+        graph.input = Variable()
+        output1 = op1(arg=graph.input)
 
-        with patch.multiple("othoz.paragraph.types.Graph", __abstractmethods__=set(), _build=lambda x: None):
-            g = Graph()
+        op2 = mock_op()
+        output2 = op2(arg=graph.input)
 
-            g.input = Variable()
-            g.output = operation(arg=g.input)
+        graph.output = [output1, output2]
 
-        return g
+        return graph
 
     return _make_graph
 
@@ -46,77 +48,47 @@ def graph(make_graph):
 
 class TestForwardGenerator:
     def test_generated_values_wo_boundary(self, graph):
-        items = list(traverse_fw([graph.output]))
-        expected = [graph.input, graph.output]
+        items = list(traverse_fw(graph.output))
+        expected = [graph.input] + graph.output
 
         assert items == expected
 
     def test_generated_values_with_boundary(self, graph):
-        items = list(traverse_fw([graph.output], boundary=[graph.input]))
-        expected = [graph.output]
-
-        assert items == expected
-
-    def test_generator_walks_across_subgraphs(self, make_graph):
-        g1 = make_graph()
-        g2 = make_graph()
-        g2.input = g1.output
-
-        items = list(traverse_fw([g2.output]))
-        expected = [g1.input, g1.output, g2.input, g2.output]
+        items = list(traverse_fw(graph.output, boundary=[graph.input]))
+        expected = graph.output
 
         assert items == expected
 
 
 class TestBackwardGenerator:
     def test_generated_value_wo_boundary(self, graph):
-        items = list(traverse_bw([graph.output]))
-        expected = [graph.output, graph.input]
+        items = list(traverse_bw(graph.output))
+        expected = graph.output + [graph.input]
 
         assert items == expected
 
     def test_generated_values_with_boundary(self, graph):
-        items = list(traverse_bw([graph.output], boundary=[graph.input]))
+        items = list(traverse_bw(graph.output, boundary=[graph.input]))
 
-        assert items == [graph.output]
-
-    def test_generator_walks_across_subgraphs(self, make_graph):
-        g1 = make_graph()
-        g2 = make_graph()
-        g2.input = g1.output
-
-        items = list(traverse_bw([g2.output]))
-        expected = [g2.output, g2.input, g1.output, g1.input]
-
-        assert items == expected
+        assert items == graph.output
 
 
 @pytest.mark.parametrize("max_workers", [pytest.param(1, id="Single thread"),
                                          pytest.param(50, id="Multi-threaded")])
 class TestEvaluation:
     def test_variable_evaluation_is_correct(self, graph, max_workers):
-        res = evaluate([graph.output], args={graph.input: "Input value"}, max_workers=max_workers)
-        operation = graph.output.func.func
+        res = evaluate(graph.output, args={graph.input: "Input value"}, max_workers=max_workers)
 
         assert res[0] == "Return value"
-        operation._run.assert_called_once_with(arg="Input value")
+        for var in graph.output:
+            var.func.func._run.assert_called_once_with(arg="Input value")
 
     def test_evaluation_is_lazy(self, graph, max_workers):
-        res = evaluate([graph.output], args={graph.output: "Input value"}, max_workers=max_workers)
-        operation = graph.output.func.func
+        res = evaluate([graph.output[0]], args={graph.output[0]: "Input value"}, max_workers=max_workers)
+        operation = graph.output[0].func.func
 
         assert res[0] == "Input value"
         assert not operation._run.called
-
-    def test_evaluation_across_subgraphs(self, make_graph, max_workers):
-        g1 = make_graph()
-        g2 = make_graph()
-        g2.input = g1.output
-
-        res = evaluate([g2.output], args={g1.input: "Input value"}, max_workers=max_workers)
-
-        assert res[0] == "Return value"
-        g1.output.func.func._run.assert_called_once()
 
 
 class TestRequirementSolving:

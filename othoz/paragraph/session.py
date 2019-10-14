@@ -159,6 +159,8 @@ def traverse_bw(output: List[Variable], boundary: Optional[List[Variable]] = Non
             if usage_counts[dep] == 1:
                 queue.append(dep)
 
+            usage_counts[dep] -= 1
+
         yield cur
 
 
