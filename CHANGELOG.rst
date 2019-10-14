@@ -17,8 +17,13 @@ Possible types of changes are:
 - ``Security`` in case of vulnerabilities
 
 
-Unreleased
-----------
+Unreleased (next version 0.2.0)
+-------------------------------
+
+Changed
+'''''''
+
+- all algorithms now work on a list of output variables, not a single one
 
 
 0.1.0 - 09.10.2019
