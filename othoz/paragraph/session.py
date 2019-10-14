@@ -1,3 +1,5 @@
+"""Algorithms for traversing and evaluating a computation graph."""
+
 from concurrent.futures import ThreadPoolExecutor, Future
 from itertools import filterfalse
 from typing import Dict, Any, Optional, List, Generator, Iterable
@@ -17,9 +19,11 @@ def traverse_fw(output: Iterable[Variable], boundary: Optional[List[Variable]] =
         If `output` is included in the boundary, the generator returns without yielding any variable.
 
     Arguments:
-
         output: The variables whose dependencies should be traversed.
         boundary: An optional list of variables excluded from the generator. Their dependencies are not resolved.
+
+    Yields:
+        All dependencies of the output variables (stopping at the boundary), each variable yielded occurring before the variables depending thereupon.
 
     Raises:
         ValueError: If a cyclic dependency is detected in the graph.
@@ -57,8 +61,11 @@ def _count_usages(output: Iterable[Variable], boundary: List[Variable]) -> Dict[
     """Count the variables directly depending on each dependency.
 
     Arguments:
-      output: The output variables. Their dependencies only are included in the usage counts.
-      boundary: An optional list of variables excluded from the dependencies resolution.
+        output: The output variables. Their dependencies only are included in the usage counts.
+        boundary: An optional list of variables excluded from the dependencies resolution.
+
+    Returns:
+        A dictionary mapping each dependency onto the number of dependent operations.
     """
     usage_counts = defaultdict(lambda: 0)
 
@@ -72,13 +79,19 @@ def _count_usages(output: Iterable[Variable], boundary: List[Variable]) -> Dict[
     return usage_counts
 
 
-def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers: Optional[int] = 1) -> Any:
+def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers: Optional[int] = 1) -> List:
     """Evaluate the specified output variable.
+
+    The argument values provided through `args` can be of type Variable. In this case, output variables depending on such arguments will evaluate to a new
+    instance of Variable.
 
     Arguments:
       output: The variables to evaluate.
       args: Initialization of the input variables.
       max_workers: The maximum number of threads to run concurrently. If None, this is automatically set to 5 x num_cpus.
+
+    Returns:
+      A list of values of the same size as `output`. The entry at index `i` is the computed value of `output[i]`.
     """
     cache = args.copy()
 
@@ -105,9 +118,7 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
             cache[var] = ex.submit(func, **arguments)
 
     print("Collecting results")
-    results = {var: cache[var].result() if isinstance(cache[var], Future) else cache[var] for var in output}
-
-    return results
+    return [cache[var].result() if isinstance(cache[var], Future) else cache[var] for var in output]
 
 
 #
@@ -123,8 +134,11 @@ def traverse_bw(output: List[Variable], boundary: Optional[List[Variable]] = Non
       If `var` is in the boundary, the generator exits without yielding any variable.
 
     Arguments:
-        var: The variables whose transitive dependencies should be explored.
+        output: The variables whose transitive dependencies should be explored.
         boundary: An optional list of variables which should be excluded from the generator. Their dependencies are not resolved.
+
+    Yields:
+        All dependencies of the output variables (stopping at the boundary), each variable is yielded after all variables depending thereupon.
     """
     if boundary is None:
         boundary = []
