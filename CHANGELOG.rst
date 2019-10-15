@@ -16,9 +16,12 @@ Possible types of changes are:
 - ``Fixed`` for any bug fixes
 - ``Security`` in case of vulnerabilities
 
+Unreleased
+----------
 
-Unreleased (next version 0.2.0)
--------------------------------
+
+0.2.0 - 15.10.2019
+------------------
 
 Changed
 '''''''
@@ -27,6 +30,7 @@ Changed
 Removed
 '''''''
 - class `othoz.paragraph.types.Graph`, as it does not add to the functionality of the framework
+
 
 0.1.0 - 09.10.2019
 ------------------
