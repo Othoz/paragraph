@@ -41,44 +41,6 @@ variable:
 
 >>> evaluate(v2, args={v1: 4})
 
-Graphs can be used to compose ops in a modular manner as follows:
-
->>> import string
->>> @attr.s
->>> class RepeatWord(Op):
-...     n = attr.ib(type=int, validator=instance_of(int))
-...
-...     def _run(self, word):
-...         return ", ".join([word] * self.n)
-...
->>> upper = op(string.capwords)
->>> @attr.s
->>> class CapitalizeAndRepeat(Graph):
-...     word = attr.ib(type=Variable, init=False, factory=Variable)
-...     output = attr.ib(type=Variable, init=False, factory=Variable)
-...
-...     def _build(self):
-...         repeater = RepeatWord(2)
-...
-...         self.word = Variable()
-...         up_word = upper(s=self.word)
-...
-...         self.output = repeater(word=up_word)
-...
->>> g = CapitalizeAndRepeat()
->>> evaluate(g.output, args={g.word: "word"})
-
-Note that classes defining Graphs may define the relationships among their attributes in any arbitrary manner, provided no cyclic dependency occurs among
-them. In particular, Graphs can have multiple outputs.
-
-Piecing together Graphs into larger ones goes like this:
-
->>> g1 = CapitalizeAndRepeat()
->>> g2 = CapitalizeAndRepeat()
->>> g2.input = g1.output
->>> evaluate(g2.output, args={g1.word: "word"})
-
-
 Going further
 =============
 

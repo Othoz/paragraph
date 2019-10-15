@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 import attr
 
-from othoz.paragraph.types import op, Op, Graph, Variable, Requirement
+from othoz.paragraph.types import op, Op, Variable, Requirement
 
 
 @attr.s
@@ -69,11 +69,3 @@ class TestOpClass:
 
         assert return_var.arg_requirements_func == operation._arg_requirements
         assert input_var.arg_requirements_func("Output requirements", "some_arg") == ""
-
-
-class TestGraph:
-    def test_build_called_on_instantiation(self):
-        with patch.multiple("othoz.paragraph.types.Graph", __abstractmethods__=set(), _build=MagicMock()):
-            g = Graph()
-
-            g._build.assert_called_once_with()
