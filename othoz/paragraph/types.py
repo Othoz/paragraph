@@ -29,6 +29,7 @@ class Variable:
         if self.func is None:
             self.func = lambda: self
 
+
 @attr.s
 class Requirement(ABC):
     """Base class for defining a requirement mixin
