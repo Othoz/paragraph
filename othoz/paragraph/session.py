@@ -104,12 +104,12 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
             arguments = {}
 
             for arg, dep in var.dependencies.items():
-                if usage_counts[dep] == 1:
+                usage_counts[dep] -= 1
+                if usage_counts[dep] == 0:
                     value = cache.pop(dep)
                 else:
                     value = cache[dep]
                 arguments[arg] = value
-                usage_counts[dep] -= 1
 
             def func(**args):
                 arguments = {arg: value.result() if isinstance(value, Future) else value for arg, value in args.items()}
@@ -156,10 +156,9 @@ def traverse_bw(output: List[Variable], boundary: Optional[List[Variable]] = Non
             if dep in boundary:
                 continue
 
-            if usage_counts[dep] == 1:
-                queue.append(dep)
-
             usage_counts[dep] -= 1
+            if usage_counts[dep] == 0:
+                queue.append(dep)
 
         yield cur
 
