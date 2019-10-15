@@ -46,13 +46,13 @@ def graph(make_graph):
 
 class TestForwardGenerator:
     def test_generated_values_wo_boundary(self, graph):
-        items = list(traverse_fw(graph.output))
+        items = list(traverse_fw([graph.output]))
         expected = [graph.input, graph.output]
 
         assert items == expected
 
     def test_generated_values_with_boundary(self, graph):
-        items = list(traverse_fw(graph.output, boundary=[graph.input]))
+        items = list(traverse_fw([graph.output], boundary=[graph.input]))
         expected = [graph.output]
 
         assert items == expected
@@ -62,7 +62,7 @@ class TestForwardGenerator:
         g2 = make_graph()
         g2.input = g1.output
 
-        items = list(traverse_fw(g2.output))
+        items = list(traverse_fw([g2.output]))
         expected = [g1.input, g1.output, g2.input, g2.output]
 
         assert items == expected
@@ -70,13 +70,13 @@ class TestForwardGenerator:
 
 class TestBackwardGenerator:
     def test_generated_value_wo_boundary(self, graph):
-        items = list(traverse_bw(graph.output))
+        items = list(traverse_bw([graph.output]))
         expected = [graph.output, graph.input]
 
         assert items == expected
 
     def test_generated_values_with_boundary(self, graph):
-        items = list(traverse_bw(graph.output, boundary=[graph.input]))
+        items = list(traverse_bw([graph.output], boundary=[graph.input]))
 
         assert items == [graph.output]
 
@@ -85,7 +85,7 @@ class TestBackwardGenerator:
         g2 = make_graph()
         g2.input = g1.output
 
-        items = list(traverse_bw(g2.output))
+        items = list(traverse_bw([g2.output]))
         expected = [g2.output, g2.input, g1.output, g1.input]
 
         assert items == expected
@@ -95,28 +95,28 @@ class TestBackwardGenerator:
                                          pytest.param(50, id="Multi-threaded")])
 class TestEvaluation:
     def test_variable_evaluation_is_correct(self, graph, max_workers):
-        res = evaluate(graph.output, args={graph.input: "Input value"})
+        res = evaluate([graph.output], args={graph.input: "Input value"}, max_workers=max_workers)
         operation = graph.output.func.func
 
-        assert res == "Return value"
-        operation.assert_called_once_with(arg="Input value")
+        assert res[0] == "Return value"
+        operation._run.assert_called_once_with(arg="Input value")
 
     def test_evaluation_is_lazy(self, graph, max_workers):
-        res = evaluate(graph.output, args={graph.output: "Input value"})
+        res = evaluate([graph.output], args={graph.output: "Input value"}, max_workers=max_workers)
         operation = graph.output.func.func
 
-        assert res == "Input value"
-        assert not operation.called
+        assert res[0] == "Input value"
+        assert not operation._run.called
 
     def test_evaluation_across_subgraphs(self, make_graph, max_workers):
         g1 = make_graph()
         g2 = make_graph()
         g2.input = g1.output
 
-        res = evaluate(g2.output, args={g1.input: "Input value"})
+        res = evaluate([g2.output], args={g1.input: "Input value"}, max_workers=max_workers)
 
-        assert res == "Return value"
-        g1.output.func.func.assert_called_once()
+        assert res[0] == "Return value"
+        g1.output.func.func._run.assert_called_once()
 
 
 class TestRequirementSolving:
@@ -127,7 +127,7 @@ class TestRequirementSolving:
         res = operation(a=1, b=var)
 
         output_req = TestReq("Output requirement")
-        reqs = solve_requirements(output=res, output_requirements=output_req)
+        reqs = solve_requirements(output_requirements={res: output_req})
 
         expected = {res: output_req, var: TestReq("Arg requirement")}
 
