@@ -105,7 +105,7 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
 
             for arg, dep in var.dependencies.items():
                 usage_counts[dep] -= 1
-                if usage_counts[dep] == 0:
+                if usage_counts[dep] == 0 and dep not in output:
                     value = cache.pop(dep)
                 else:
                     value = cache[dep]
@@ -117,8 +117,29 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
 
             cache[var] = ex.submit(func, **arguments)
 
-    print("Collecting results")
     return [cache[var].result() if isinstance(cache[var], Future) else cache[var] for var in output]
+
+
+def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable[Dict[Variable, Any]], max_workers: int = 1)\
+        -> Generator[List[Any], None, None]:
+    """Iterate the evaluation of a set of output variables over input arguments.
+
+    Arguments:
+      output: The variables to evaluate.
+      args: A dictionary mapping input variables onto input values.
+      iter_args: An iterable over dictionaries mapping input variables onto input values.
+      max_workers: The maximum number of threads to run concurrently. If None, this is automatically set to 5 x num_cpus.
+
+    Yields:
+      A list of values of the same size as `output`. The entry at index `i` is the computed value of `output[i]`.
+    """
+    values = dict(zip(output, evaluate(output, args=args, max_workers=max_workers)))
+    variables = [values[var] for var in output if isinstance(values[var], Variable)]
+
+    for args in iter_args:
+        var_values = dict(zip(variables, evaluate(variables, args=args, max_workers=max_workers)))
+
+        yield [values[var] if not isinstance(values[var], Variable) else var_values[values[var]] for var in output]
 
 
 #

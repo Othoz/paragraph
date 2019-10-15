@@ -1,26 +1,8 @@
 import pytest
-import attr
-from unittest.mock import MagicMock
 
-from othoz.paragraph.types import Requirement, Variable, Op
-from othoz.paragraph.session import traverse_fw, traverse_bw, evaluate, solve_requirements
-
-
-@attr.s
-class TestReq(Requirement):
-    _string = attr.ib(type=str, default="")
-
-    def merge(self, other):
-        self._string += other._string
-        super().merge(other)
-
-
-def mock_op():
-    class MockOp(Op):
-        _run = MagicMock(return_value="Return value")
-        _arg_requirements = MagicMock(return_value=TestReq("Arg requirement"))
-
-    return MockOp()
+from othoz.paragraph.types import Variable
+from othoz.paragraph.session import traverse_fw, traverse_bw, evaluate, solve_requirements, apply
+from othoz.paragraph.tests.test_types import TestReq, mock_op
 
 
 @pytest.fixture
@@ -81,6 +63,11 @@ class TestEvaluation:
 
         assert res[0] == "Input value"
         assert not operation._run.called
+
+    def test_apply_returns_correct_number_of_results(self, graph, max_workers):
+        res = list(apply(graph.output, args={}, iter_args=[{graph.output[0]: "Input value"}] * 5, max_workers=max_workers))
+
+        assert len(res) == 5
 
 
 class TestRequirementSolving:
