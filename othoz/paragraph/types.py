@@ -25,6 +25,10 @@ class Variable:
     arg_requirements_func = attr.ib(type=Optional[Callable], default=lambda x, y: type(x)(), validator=optional(instance_of(Callable)))
     dependencies = attr.ib(type=Dict[str, Any], factory=dict)
 
+    def __attrs_post_init__(self):
+        if self.func is None:
+            self.func = lambda: self
+
 
 @attr.s
 class Requirement(ABC):
