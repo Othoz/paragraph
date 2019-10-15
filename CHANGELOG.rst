@@ -21,7 +21,7 @@ Unreleased
 
 Fixed
 '''''
-- evaluating a graph without initializing an input variable (that is, a variable without dependencies) would result is calling None, which is not callable.
+- evaluating a graph without initializing an input variable (that is, a variable without dependencies) would result in calling None, which is not callable.
 
 0.2.0 - 15.10.2019
 ------------------
