@@ -1,11 +1,11 @@
 """Algorithms for traversing and evaluating a computation graph."""
 
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import Executor, Future, ThreadPoolExecutor
 from itertools import filterfalse
-from typing import Dict, Any, Optional, List, Generator, Iterable
+from typing import Dict, Any, List, Generator, Iterable, Optional
 from collections import defaultdict, deque
 
-from othoz.paragraph.types import Variable, Requirement
+from othoz.paragraph.types import Variable, Requirement, SequentialExecutor
 
 
 def traverse_fw(output: Iterable[Variable]) -> Generator[Variable, None, None]:  # noqa: C901
@@ -66,7 +66,7 @@ def _count_usages(output: Iterable[Variable]) -> Dict[Variable, int]:
     return usage_counts
 
 
-def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers: Optional[int] = 1) -> List:  # noqa: C901
+def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], executor: Executor = SequentialExecutor()) -> List:  # noqa: C901
     """Evaluate the specified output variable.
 
     The argument values provided through `args` can be of type Variable. In this case, output variables depending on such arguments will evaluate to a new
@@ -78,7 +78,8 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
     Arguments:
       output: The variables to evaluate.
       args: Initialization of the input variables, none of which should have dependencies.
-      max_workers: The maximum number of threads to run concurrently. If None, this is automatically set to 5 x num_cpus.
+      executor: An instance of concurrent.futures.Executor to which op evaluations are submitted individually. Defaults to a mono-threaded executor shared by
+        all calls to the function.
 
     Returns:
       A list of values of the same size as `output`. The entry at index `i` is the computed value of `output[i]`.
@@ -95,32 +96,30 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
     # Discover usages so cached references can be released at earliest opportunity
     usage_counts = _count_usages(output=output)
 
-    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+    for var in traverse_fw(output):
+        if var in cache:
+            continue
 
-        for var in traverse_fw(output):
-            if var in cache:
-                continue
+        arguments = {}
 
-            arguments = {}
+        for arg, dep in var.dependencies.items():
+            usage_counts[dep] -= 1
+            if usage_counts[dep] == 0 and dep not in output:
+                value = cache.pop(dep)
+            else:
+                value = cache[dep]
+            arguments[arg] = value
 
-            for arg, dep in var.dependencies.items():
-                usage_counts[dep] -= 1
-                if usage_counts[dep] == 0 and dep not in output:
-                    value = cache.pop(dep)
-                else:
-                    value = cache[dep]
-                arguments[arg] = value
+        def func(**kwargs):
+            kwarguments = {arg: value.result() if isinstance(value, Future) else value for arg, value in kwargs.items()}
+            return var.func(**kwarguments)
 
-            def func(**args):
-                arguments = {arg: value.result() if isinstance(value, Future) else value for arg, value in args.items()}
-                return var.func(**arguments)
-
-            cache[var] = ex.submit(func, **arguments)
+        cache[var] = executor.submit(func, **arguments)
 
     return [cache[var].result() if isinstance(cache[var], Future) else cache[var] for var in output]
 
 
-def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable[Dict[Variable, Any]], max_workers: int = 1)\
+def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable[Dict[Variable, Any]], executor: Executor = SequentialExecutor())\
         -> Generator[List[Any], None, None]:
     """Iterate the evaluation of a set of output variables over input arguments.
 
@@ -136,7 +135,8 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
       output: The variables to evaluate.
       args: A dictionary mapping input variables onto input values.
       iter_args: An iterable over dictionaries mapping input variables onto input values.
-      max_workers: The maximum number of threads to run concurrently. If None, this is automatically set to 5 x num_cpus.
+      executor: An instance of concurrent.futures.Executor to which op evaluations are submitted individually. Defaults to a SequentialExecutor shared by
+        all calls to the function.
 
     Yields:
       A list of values of the same size as `output`. The entry at index `i` is the computed value of `output[i]`.
@@ -144,7 +144,7 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
     Raises:
       ValueError: If a dynamic argument assigns a value to a variable appearing in static arguments, as proceeding would produce inconsistent results.
     """
-    partial_values = dict(zip(output, evaluate(output, args=args, max_workers=max_workers)))
+    partial_values = dict(zip(output, evaluate(output, args=args, executor=executor)))
     unresolved_output_vars = [partial_values[var] for var in output if isinstance(partial_values[var], Variable)]
 
     for arg_dict in iter_args:
@@ -152,7 +152,7 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
             if var in args:
                 raise ValueError("A value for variable {} is provided in `iter_args` and in `args`."
                                  "Proceeding further could result in an inconsistent evaluation.".format(var))
-        iter_values = dict(zip(unresolved_output_vars, evaluate(unresolved_output_vars, args=args, max_workers=max_workers)))
+        iter_values = dict(zip(unresolved_output_vars, evaluate(unresolved_output_vars, args=args, executor=executor)))
         yield [partial_values[var] if not isinstance(partial_values[var], Variable) else iter_values[partial_values[var]] for var in output]
 
 

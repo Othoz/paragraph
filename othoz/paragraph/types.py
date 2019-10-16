@@ -1,5 +1,5 @@
 """Class definitions supporting the computation graph"""
-
+from concurrent.futures import Future, Executor
 from typing import Callable, Dict, Any, Optional
 from functools import partial, wraps
 from itertools import filterfalse
@@ -145,3 +145,29 @@ def op(func: Callable) -> Callable:
             return func(**kwargs)
 
     return wraps(func)(Wrapper())
+
+
+class SequentialExecutor(Executor):
+    """A sequential executor implementation
+
+    The purpose of this class is to provide evaluation functions with a sensible default executor.
+    """
+    @staticmethod
+    def submit(fn, *args, **kwargs) -> Future:
+        f = Future()
+        try:
+            result = fn(*args, **kwargs)
+        except BaseException as e:
+            f.set_exception(e)
+        else:
+            f.set_result(result)
+
+        return f
+
+    @staticmethod
+    def map(fn, *iterables, timeout=None, chunksize=1):
+        raise NotImplementedError()
+
+    @staticmethod
+    def shutdown(wait=True):
+        pass
