@@ -1,7 +1,7 @@
 import pytest
 
 from othoz.paragraph.types import Variable
-from othoz.paragraph.session import traverse_fw, traverse_bw, evaluate, solve_requirements
+from othoz.paragraph.session import traverse_fw, traverse_bw, evaluate, solve_requirements, apply
 from othoz.paragraph.tests.test_types import TestReq, mock_op
 
 
@@ -21,15 +21,9 @@ def graph():
 
 
 class TestForwardGenerator:
-    def test_generated_values_wo_boundary(self, graph):
+    def test_generated_values(self, graph):
         items = list(traverse_fw(graph.output))
         expected = [graph.input] + graph.output
-
-        assert items == expected
-
-    def test_generated_values_with_boundary(self, graph):
-        items = list(traverse_fw(graph.output, boundary=[graph.input]))
-        expected = graph.output
 
         assert items == expected
 
@@ -41,15 +35,10 @@ class TestBackwardGenerator:
 
         assert items == expected
 
-    def test_generated_values_with_boundary(self, graph):
-        items = list(traverse_bw(graph.output, boundary=[graph.input]))
-
-        assert items == [graph.output[1], graph.output[0]]
-
 
 @pytest.mark.parametrize("max_workers", [pytest.param(1, id="Single thread"),
                                          pytest.param(50, id="Multi-threaded")])
-class TestEvaluation:
+class TestEvaluate:
     def test_variable_evaluation_is_correct(self, graph, max_workers):
         res = evaluate(graph.output, args={graph.input: "Input value"}, max_workers=max_workers)
 
@@ -60,11 +49,24 @@ class TestEvaluation:
         graph.output[1].func.func._run.assert_called_once_with(arg0="Input value", arg1="op0 return value")
 
     def test_evaluation_is_lazy(self, graph, max_workers):
-        res = evaluate([graph.output[0]], args={graph.output[0]: "Input value"}, max_workers=max_workers)
-        operation = graph.output[0].func.func
+        res = evaluate([graph.output[0]], args={graph.input: "Input value"}, max_workers=max_workers)
+        operation = graph.output[1].func.func
 
-        assert res[0] == "Input value"
+        assert res[0] == "op0 return value"
         assert not operation._run.called
+
+
+@pytest.mark.parametrize("max_workers", [pytest.param(1, id="Single thread"),
+                                         pytest.param(50, id="Multi-threaded")])
+class TestApply:
+    def test_apply_returns_correct_number_of_results(self, graph, max_workers):
+        res = list(apply(graph.output, args={}, iter_args=[{graph.input: "Input value"}] * 5, max_workers=max_workers))
+
+        assert len(res) == 5
+
+    def test_apply_raises_on_overwriting_an_input_variable(self, graph, max_workers):
+        with pytest.raises(ValueError):
+            list(apply(graph.output, args={graph.input: "Input value"}, iter_args=[{graph.input: "Input value"}] * 5, max_workers=max_workers))
 
 
 class TestRequirementSolving:
