@@ -49,7 +49,7 @@ class TestBackwardGenerator:
 
 @pytest.mark.parametrize("max_workers", [pytest.param(1, id="Single thread"),
                                          pytest.param(50, id="Multi-threaded")])
-class TestEvaluation:
+class TestEvaluate:
     def test_variable_evaluation_is_correct(self, graph, max_workers):
         res = evaluate(graph.output, args={graph.input: "Input value"}, max_workers=max_workers)
 
@@ -66,11 +66,18 @@ class TestEvaluation:
         assert res[0] == "Input value"
         assert not operation._run.called
 
+
+@pytest.mark.parametrize("max_workers", [pytest.param(1, id="Single thread"),
+                                         pytest.param(50, id="Multi-threaded")])
+class TestApply:
     def test_apply_returns_correct_number_of_results(self, graph, max_workers):
         res = list(apply(graph.output, args={}, iter_args=[{graph.output[0]: "Input value"}] * 5, max_workers=max_workers))
 
         assert len(res) == 5
 
+    def test_apply_raises_on_overwriting_a_resolved_variable(self, graph, max_workers):
+        with pytest.raises(ValueError):
+            list(apply(graph.output, args={graph.input: "Input value"}, iter_args=[{graph.output[0]: "Input value"}] * 5, max_workers=max_workers))
 
 class TestRequirementSolving:
     def test_req_update_func_called(self):
