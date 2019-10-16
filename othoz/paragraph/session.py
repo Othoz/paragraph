@@ -142,7 +142,7 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
       A list of values of the same size as `output`. The entry at index `i` is the computed value of `output[i]`.
 
     Raises:
-      ValueError: If a dynamic argument assigns a value to a variable fully resolved by static arguments, as proceeding would produce inconsistent results.
+      ValueError: If a dynamic argument assigns a value to a variable appearing in static arguments, as proceeding would produce inconsistent results.
     """
     partial_values = dict(zip(output, evaluate(output, args=args, max_workers=max_workers)))
     unresolved_output_vars = [partial_values[var] for var in output if isinstance(partial_values[var], Variable)]
