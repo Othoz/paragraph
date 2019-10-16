@@ -24,8 +24,9 @@ def mock_op():
 class TestVariable:
     def test_default_func_returns_self(self):
         var = Variable()
-        
+
         assert var.func() is var
+
 
 class TestOpDecorator:
     def test_invokes_function_if_args_invariable(self):
