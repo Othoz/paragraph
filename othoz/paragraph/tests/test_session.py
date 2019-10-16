@@ -79,6 +79,7 @@ class TestApply:
         with pytest.raises(ValueError):
             list(apply(graph.output, args={graph.input: "Input value"}, iter_args=[{graph.output[0]: "Input value"}] * 5, max_workers=max_workers))
 
+
 class TestRequirementSolving:
     def test_req_update_func_called(self):
         operation = mock_op("")
