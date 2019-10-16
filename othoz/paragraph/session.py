@@ -85,6 +85,9 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
     The argument values provided through `args` can be of type Variable. In this case, output variables depending on such arguments will evaluate to a new
     instance of Variable.
 
+    Warning:
+      If an output variable is unresolved by the arguments provided as `args`, a value of type `Variable` will be returned at the corresponding position.
+
     Arguments:
       output: The variables to evaluate.
       args: Initialization of the input variables.
@@ -127,6 +130,10 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
     This function accepts two types of arguments: `args` receives *static* arguments, using which a first evaluation of the output variables is executed;
     then, `iter_args` receives an iterable over input arguments, which are iterated over to resolve the output variables left unresolved after the first
     evaluation. The values of the output variables obtained after each iteration are then yielded.
+
+    Warning:
+      If an output variable is unresolved by the arguments provided as `args` and a value of `iter_args`, a value of type `Variable` will be returned at the
+      corresponding position.
 
     Arguments:
       output: The variables to evaluate.
