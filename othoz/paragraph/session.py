@@ -8,19 +8,15 @@ from collections import defaultdict, deque
 from othoz.paragraph.types import Variable, Requirement
 
 
-def traverse_fw(output: Iterable[Variable], boundary: Optional[List[Variable]] = None) -> Generator[Variable, None, None]:  # noqa: C901
+def traverse_fw(output: Iterable[Variable]) -> Generator[Variable, None, None]:  # noqa: C901
     """Returns a generator implementing a :term:`forward traversal` of the computation subgraph leading to `var`.
 
     The generator returned guarantees that every dependent variable occurs after all its dependencies upon iterating, whence the name `forward traversal`. When
     generated in this order, variables can be simply evaluated in turn: at each iteration, all dependencies of the current variable will have been evaluated
     already.
 
-    Note:
-        If `output` is included in the boundary, the generator returns without yielding any variable.
-
     Arguments:
         output: The variables whose dependencies should be traversed.
-        boundary: An optional list of variables excluded from the generator. Their dependencies are not resolved.
 
     Yields:
         All dependencies of the output variables (stopping at the boundary), each variable yielded occurring before the variables depending thereupon.
@@ -28,13 +24,10 @@ def traverse_fw(output: Iterable[Variable], boundary: Optional[List[Variable]] =
     Raises:
         ValueError: If a cyclic dependency is detected in the graph.
     """
-    if boundary is None:
-        boundary = []
-
     visited = []
 
     for var in output:
-        if var in boundary or var in visited:
+        if var in visited:
             continue
 
         path = [var]
@@ -42,8 +35,6 @@ def traverse_fw(output: Iterable[Variable], boundary: Optional[List[Variable]] =
         while len(path) > 0:
 
             for dep in path[-1].dependencies.values():
-                if dep in boundary:
-                    continue
 
                 if dep in path:
                     raise ValueError("Cyclic dependency detected for {}, cannot proceed with iteration.".format(dep))
@@ -57,23 +48,19 @@ def traverse_fw(output: Iterable[Variable], boundary: Optional[List[Variable]] =
                 visited.append(path.pop())
 
 
-def _count_usages(output: Iterable[Variable], boundary: List[Variable]) -> Dict[Variable, int]:
+def _count_usages(output: Iterable[Variable]) -> Dict[Variable, int]:
     """Count the variables directly depending on each dependency.
 
     Arguments:
         output: The output variables. Their dependencies only are included in the usage counts.
-        boundary: An optional list of variables excluded from the dependencies resolution.
 
     Returns:
         A dictionary mapping each dependency onto the number of dependent operations.
     """
     usage_counts = defaultdict(lambda: 0)
 
-    for var in traverse_fw(output, boundary=boundary):
+    for var in traverse_fw(output):
         for dep in var.dependencies.values():
-            if dep in boundary:
-                continue
-
             usage_counts[dep] += 1
 
     return usage_counts
@@ -90,20 +77,30 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
 
     Arguments:
       output: The variables to evaluate.
-      args: Initialization of the input variables.
+      args: Initialization of the input variables, no of which should have dependencies.
       max_workers: The maximum number of threads to run concurrently. If None, this is automatically set to 5 x num_cpus.
 
     Returns:
       A list of values of the same size as `output`. The entry at index `i` is the computed value of `output[i]`.
+
+    Raises:
+      ValueError: If a variable in `args` has dependencies. In this case, the consistency of the results cannot be guaranteed.
     """
+    for var in args:
+        if len(var.dependencies) > 0:
+            raise ValueError("An argument is provided for variable {}, but it has dependencies."
+                             "Proceeding further could result in an inconsistent evaluation.".format(var))
     cache = args.copy()
 
     # Discover usages so cached references can be released at earliest opportunity
-    usage_counts = _count_usages(output=output, boundary=list(cache))
+    usage_counts = _count_usages(output=output)
 
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
 
-        for var in traverse_fw(output, boundary=list(cache)):
+        for var in traverse_fw(output):
+            if var in cache:
+                continue
+
             arguments = {}
 
             for arg, dep in var.dependencies.items():
@@ -147,24 +144,23 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
     Raises:
       ValueError: If a dynamic argument assigns a value to a variable fully resolved by static arguments, as proceeding would produce inconsistent results.
     """
-    values = dict(zip(output, evaluate(output, args=args, max_workers=max_workers)))
-    variables = [values[var] for var in output if isinstance(values[var], Variable)]
+    partial_values = dict(zip(output, evaluate(output, args=args, max_workers=max_workers)))
+    unresolved_output_vars = [partial_values[var] for var in output if isinstance(partial_values[var], Variable)]
 
-    for args in iter_args:
-        for arg in args:
-            if not isinstance(values[arg], Variable):
-                raise ValueError("iter_args includes a value for variable {}, which is already resolved.".format(arg))
-
-        iter_values = dict(zip(variables, evaluate(variables, args=args, max_workers=max_workers)))
-
-        yield [values[var] if not isinstance(values[var], Variable) else iter_values[values[var]] for var in output]
+    for arg_dict in iter_args:
+        for var in arg_dict:
+            if var in args:
+                raise ValueError("A value for variable {} is provided in `iter_args` and in `args`."
+                                 "Proceeding further could result in an inconsistent evaluation.".format(var))
+        iter_values = dict(zip(unresolved_output_vars, evaluate(unresolved_output_vars, args=args, max_workers=max_workers)))
+        yield [partial_values[var] if not isinstance(partial_values[var], Variable) else iter_values[partial_values[var]] for var in output]
 
 
 #
 # Backward algorithms
 #
 
-def traverse_bw(output: List[Variable], boundary: Optional[List[Variable]] = None) -> Generator[Variable, None, None]:
+def traverse_bw(output: List[Variable]) -> Generator[Variable, None, None]:
     """Returns a generator implementing a :term:`backward traversal` of `var`'s transitive dependencies.
 
     This generator guarantees that a variable is yielded after all its usages.
@@ -174,26 +170,20 @@ def traverse_bw(output: List[Variable], boundary: Optional[List[Variable]] = Non
 
     Arguments:
         output: The variables whose transitive dependencies should be explored.
-        boundary: An optional list of variables which should be excluded from the generator. Their dependencies are not resolved.
 
     Yields:
         All dependencies of the output variables (stopping at the boundary), each variable is yielded after all variables depending thereupon.
     """
-    if boundary is None:
-        boundary = []
+    usage_counts = _count_usages(output)
 
-    usage_counts = _count_usages(output, boundary)
-
-    # Skip output variables also present in the boundary or the dependency path of another output variable
-    queue = deque(filterfalse(lambda x: x in boundary or usage_counts[x] > 0, output))
+    # At this stage, skip output variables also present in the dependency path of another output variable
+    queue = deque(filterfalse(lambda x: usage_counts[x] > 0, output))
 
     while len(queue) > 0:
 
         cur = queue.popleft()
 
         for dep in cur.dependencies.values():
-            if dep in boundary:
-                continue
 
             usage_counts[dep] -= 1
             if usage_counts[dep] == 0:
@@ -202,7 +192,7 @@ def traverse_bw(output: List[Variable], boundary: Optional[List[Variable]] = Non
         yield cur
 
 
-def solve_requirements(output_requirements: Dict[Variable, Requirement], boundary: Optional[List[Variable]] = None) -> Dict[Variable, Requirement]:
+def solve_requirements(output_requirements: Dict[Variable, Requirement]) -> Dict[Variable, Requirement]:
     """Backward propagate requirements from the output variable to its transitive dependencies
 
     Arguments:
@@ -214,7 +204,7 @@ def solve_requirements(output_requirements: Dict[Variable, Requirement], boundar
     """
     reqs = output_requirements.copy()
 
-    for var in traverse_bw(list(output_requirements), boundary=boundary):
+    for var in traverse_bw(list(output_requirements)):
         for arg, dep in var.dependencies.items():
             arg_req = var.arg_requirements_func(reqs[var], arg)
 
