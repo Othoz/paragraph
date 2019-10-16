@@ -66,7 +66,7 @@ def _count_usages(output: Iterable[Variable]) -> Dict[Variable, int]:
     return usage_counts
 
 
-def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers: Optional[int] = 1) -> List:
+def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers: Optional[int] = 1) -> List:  # noqa: C901
     """Evaluate the specified output variable.
 
     The argument values provided through `args` can be of type Variable. In this case, output variables depending on such arguments will evaluate to a new
