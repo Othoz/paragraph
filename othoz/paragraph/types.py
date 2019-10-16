@@ -21,13 +21,9 @@ class Variable:
         arg_requirements_func: a callable returning the requirements bearing on a dependency given those bearing on the current variable
         dependencies: a dictionary mapping arguments of the above callable onto other variables in the computation graph
     """
-    func = attr.ib(type=Optional[Callable], default=None, validator=optional(instance_of(Callable)))
+    func = attr.ib(type=Optional[Callable], default=attr.Factory(lambda self: lambda: self, takes_self=True), validator=optional(instance_of(Callable)))
     arg_requirements_func = attr.ib(type=Optional[Callable], default=lambda x, y: type(x)(), validator=optional(instance_of(Callable)))
     dependencies = attr.ib(type=Dict[str, Any], factory=dict)
-
-    def __attrs_post_init__(self):
-        if self.func is None:
-            self.func = lambda: self
 
 
 @attr.s
