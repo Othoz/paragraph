@@ -1,7 +1,7 @@
 """Class definitions supporting the computation graph"""
 
 from typing import Callable, Dict, Any, Optional
-from functools import partial, wraps
+from functools import wraps
 from itertools import filterfalse
 
 import attr

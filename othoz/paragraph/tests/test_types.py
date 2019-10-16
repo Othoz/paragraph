@@ -64,7 +64,6 @@ class TestOpDecorator:
         assert str(result) == "function(arg=input)"
 
 
-
 class TestOpClass:
     def test_call_invokes_function_if_args_invariable(self):
         operation = mock_op("op")
