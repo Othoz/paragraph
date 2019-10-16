@@ -105,7 +105,7 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
 
             for arg, dep in var.dependencies.items():
                 usage_counts[dep] -= 1
-                if usage_counts[dep] == 0:
+                if usage_counts[dep] == 0 and dep not in output:
                     value = cache.pop(dep)
                 else:
                     value = cache[dep]
