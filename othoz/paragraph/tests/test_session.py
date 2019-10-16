@@ -2,7 +2,7 @@ import pytest
 
 from othoz.paragraph.types import Variable
 from othoz.paragraph.session import traverse_fw, traverse_bw, evaluate, solve_requirements, apply
-from othoz.paragraph.tests.test_types import TestReq, mock_op
+from othoz.paragraph.tests.test_types import MockReq, mock_op
 
 
 @pytest.fixture
@@ -45,12 +45,12 @@ class TestEvaluate:
         assert res[0] == "op0 return value"
         assert res[1] == "op1 return value"
 
-        graph.output[0].func.func._run.assert_called_once_with(arg="Input value")
-        graph.output[1].func.func._run.assert_called_once_with(arg0="Input value", arg1="op0 return value")
+        graph.output[0].op._run.assert_called_once_with(arg="Input value")
+        graph.output[1].op._run.assert_called_once_with(arg0="Input value", arg1="op0 return value")
 
     def test_evaluation_is_lazy(self, graph, max_workers):
         res = evaluate([graph.output[0]], args={graph.input: "Input value"}, max_workers=max_workers)
-        operation = graph.output[1].func.func
+        operation = graph.output[1].op
 
         assert res[0] == "op0 return value"
         assert not operation._run.called
@@ -71,15 +71,15 @@ class TestApply:
 
 class TestRequirementSolving:
     def test_req_update_func_called(self):
-        operation = mock_op("")
+        operation = mock_op()
 
         var = Variable()
         res = operation(a=1, b=var)
 
-        output_req = TestReq("Output requirement")
+        output_req = MockReq("Output requirement")
         reqs = solve_requirements(output_requirements={res: output_req})
 
-        expected = {res: output_req, var: TestReq("Arg requirement")}
+        expected = {res: output_req, var: MockReq("Arg requirement")}
 
         assert reqs == expected
-        res.arg_requirements_func.assert_called_once_with(output_req, "b")
+        res.op._arg_requirements.assert_called_once_with(output_req, "b")

@@ -5,7 +5,6 @@ from functools import partial, wraps
 from itertools import filterfalse
 
 import attr
-from attr.validators import optional, instance_of
 
 from abc import ABC, abstractmethod
 
@@ -21,9 +20,25 @@ class Variable:
         arg_requirements_func: a callable returning the requirements bearing on a dependency given those bearing on the current variable
         dependencies: a dictionary mapping arguments of the above callable onto other variables in the computation graph
     """
-    func = attr.ib(type=Optional[Callable], default=attr.Factory(lambda self: lambda: self, takes_self=True), validator=optional(instance_of(Callable)))
-    arg_requirements_func = attr.ib(type=Optional[Callable], default=lambda x, y: type(x)(), validator=optional(instance_of(Callable)))
+    name = attr.ib(type=Optional[str], default=None)
+    op = attr.ib(type="Op", default=attr.Factory(lambda self: op(lambda: self), takes_self=True))
+    args = attr.ib(type=Dict["Variable", Any], factory=dict)
     dependencies = attr.ib(type=Dict[str, Any], factory=dict)
+
+    def func(self, **kwargs):
+        return self.op(**self.args, **kwargs)
+
+    def arg_requirements_func(self, req: "Requirement", arg: str):
+        return self.op._arg_requirements(req, arg)
+
+    def __str__(self):
+        if self.name:
+            return self.name
+
+        arg_strings = ["{}=()".format(arg, value) for arg, value in self.args.items()]
+        dep_strings = ["{}={}".format(arg, var) for arg, var in self.dependencies.items()]
+
+        return "{}({})".format(self.op, ",".join(arg_strings + dep_strings))
 
 
 @attr.s
@@ -91,6 +106,8 @@ class Op(ABC):
     Additional requirements can be introduced for variable arguments, globally or individually, by redefining the :meth:`_arg_requirements` method
     appropriately.
     """
+    def __str__(self):
+        return type(self).__name__
 
     @abstractmethod
     def _run(self, **kwargs):
@@ -126,7 +143,7 @@ class Op(ABC):
 
         static_args = dict(filterfalse(lambda x: isinstance(x[1], Variable), kwargs.items()))
 
-        return Variable(func=partial(self, **static_args), arg_requirements_func=self._arg_requirements, dependencies=var_args)
+        return Variable(op=self, args=static_args, dependencies=var_args)
 
 
 def op(func: Callable) -> Callable:
@@ -139,8 +156,10 @@ def op(func: Callable) -> Callable:
     Arguments:
         func: the function to transform into an Op
     """
-
     class Wrapper(Op):
+        def __str__(self):
+            return func.__name__
+
         def _run(self, **kwargs):
             return func(**kwargs)
 

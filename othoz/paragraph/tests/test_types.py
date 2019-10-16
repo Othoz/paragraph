@@ -5,7 +5,7 @@ from othoz.paragraph.types import op, Op, Variable, Requirement
 
 
 @attr.s
-class TestReq(Requirement):
+class MockReq(Requirement):
     _string = attr.ib(type=str, default="")
 
     def merge(self, other):
@@ -16,16 +16,21 @@ class TestReq(Requirement):
 def mock_op(name=""):
     class MockOp(Op):
         _run = MagicMock(return_value="{} return value".format(name))
-        _arg_requirements = MagicMock(return_value=TestReq("Arg requirement"))
+        _arg_requirements = MagicMock(return_value=MockReq("Arg requirement"))
 
     return MockOp()
 
 
 class TestVariable:
     def test_default_func_returns_self(self):
-        var = Variable()
+        var = Variable("v1")
 
         assert var.func() is var
+
+    def test_str_is_correct(self):
+        var = Variable("v1")
+
+        assert str(var) == "v1"
 
 
 class TestOpDecorator:
@@ -49,6 +54,16 @@ class TestOpDecorator:
         assert isinstance(return_var, Variable)
         assert return_var.dependencies == {"b": input_var}
 
+    def test_string_representation(self):
+        mocked_function = MagicMock(__name__="function")
+        mocked_op = op(mocked_function)
+        variable = Variable(name="input")
+
+        result = mocked_op(arg=variable)
+
+        assert str(result) == "function(arg=input)"
+
+
 
 class TestOpClass:
     def test_call_invokes_function_if_args_invariable(self):
@@ -67,10 +82,9 @@ class TestOpClass:
         assert isinstance(return_var, Variable)
         assert return_var.dependencies == {"b": input_var}
 
-    def test_call_writes_requirements_update_func(self):
-        operation = mock_op()
-        input_var = Variable()
-        return_var = operation(a=1, b=input_var)
+    def test_returned_variable_has_correct_name(self):
+        operation = mock_op("op")
+        variable = Variable(name="input")
+        result = operation(arg=variable)
 
-        assert return_var.arg_requirements_func == operation._arg_requirements
-        assert input_var.arg_requirements_func("Output requirements", "some_arg") == ""
+        assert str(result) == "MockOp(arg=input)"
