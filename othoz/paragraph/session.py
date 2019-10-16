@@ -77,7 +77,7 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
 
     Arguments:
       output: The variables to evaluate.
-      args: Initialization of the input variables, no of which should have dependencies.
+      args: Initialization of the input variables, none of which should have dependencies.
       max_workers: The maximum number of threads to run concurrently. If None, this is automatically set to 5 x num_cpus.
 
     Returns:
