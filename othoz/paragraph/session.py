@@ -124,6 +124,10 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
         -> Generator[List[Any], None, None]:
     """Iterate the evaluation of a set of output variables over input arguments.
 
+    This function accepts two types of arguments: `args` receives *static* arguments, using which a first evaluation of the output variables is executed;
+    then, `iter_args` receives an iterable over input arguments, which are iterated over to resolve the output variables left unresolved after the first
+    evaluation. The values of the output variables obtained after each iteration are then yielded.
+
     Arguments:
       output: The variables to evaluate.
       args: A dictionary mapping input variables onto input values.
@@ -132,14 +136,21 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
 
     Yields:
       A list of values of the same size as `output`. The entry at index `i` is the computed value of `output[i]`.
+
+    Raises:
+      ValueError: If a dynamic argument assigns a value to a variable fully resolved by static arguments, as proceeding would produce inconsistent results.
     """
     values = dict(zip(output, evaluate(output, args=args, max_workers=max_workers)))
     variables = [values[var] for var in output if isinstance(values[var], Variable)]
 
     for args in iter_args:
-        var_values = dict(zip(variables, evaluate(variables, args=args, max_workers=max_workers)))
+        for arg in args:
+            if not isinstance(values[arg], Variable):
+                raise ValueError("iter_args includes a value for variable {}, which is already resolved.".format(arg))
 
-        yield [values[var] if not isinstance(values[var], Variable) else var_values[values[var]] for var in output]
+        iter_values = dict(zip(variables, evaluate(variables, args=args, max_workers=max_workers)))
+
+        yield [values[var] if not isinstance(values[var], Variable) else iter_values[values[var]] for var in output]
 
 
 #
