@@ -16,8 +16,13 @@ Possible types of changes are:
 - ``Fixed`` for any bug fixes
 - ``Security`` in case of vulnerabilities
 
-Unreleased
-----------
+0.3.0 (unreleased)
+------------------
+
+Changed
+'''''''
+- completely remove the concept of boundary, which opens the door to inconsistent behavior. Instead, only independent variables can be initialized for
+evaluation.
 
 Fixed
 '''''
