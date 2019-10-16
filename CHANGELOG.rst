@@ -22,7 +22,7 @@ Possible types of changes are:
 Changed
 '''''''
 - completely remove the concept of boundary, which opens the door to inconsistent behavior. Instead, only independent variables can be initialized for
-evaluation.
+  evaluation.
 
 Fixed
 '''''
