@@ -8,7 +8,7 @@ import attr
 from abc import ABC, abstractmethod
 
 
-@attr.s(eq=False, repr=False)
+@attr.s(eq=False, repr=False, frozen=True)
 class Variable:
     """A generic :term:`variable`.
 
