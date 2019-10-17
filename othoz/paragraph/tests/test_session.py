@@ -9,7 +9,7 @@ from othoz.paragraph.tests.test_types import MockReq, mock_op
 def graph():
     graph = lambda: None  # noqa: E731
     op1 = mock_op("op0")
-    graph.input = Variable()
+    graph.input = Variable("input")
     output0 = op1(arg=graph.input)
 
     op2 = mock_op("op1")
@@ -80,7 +80,7 @@ class TestRequirementSolving:
     def test_req_update_func_called():
         operation = mock_op()
 
-        var = Variable()
+        var = Variable("input")
         res = operation(a=1, b=var)
 
         output_req = MockReq("Output requirement")

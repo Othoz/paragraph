@@ -29,6 +29,11 @@ class TestVariable:
             _ = Variable("name", dependencies={"a": Variable("name")})
 
     @staticmethod
+    def test_validator_raises_if_independent_variable_is_not_given_a_name():
+        with pytest.raises(ValueError):
+            _ = Variable()
+
+    @staticmethod
     def test_str_is_correct():
         var = Variable("v1")
 
@@ -51,7 +56,7 @@ class TestOpDecorator:
         mocked_function = MagicMock(return_value="Return value")
         mocked_op = op(mocked_function)
 
-        input_var = Variable()
+        input_var = Variable("input")
         return_var = mocked_op(a=1, b=input_var)
 
         assert not mocked_function.called
@@ -81,7 +86,7 @@ class TestOpClass:
     @staticmethod
     def test_call_returns_variable_if_some_arg_variable():
         operation = mock_op("op")
-        input_var = Variable()
+        input_var = Variable("input")
         return_var = operation(a=1, b=input_var)
 
         assert not operation._run.called
