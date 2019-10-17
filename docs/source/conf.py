@@ -75,6 +75,8 @@ exclude_patterns = []
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
+# Allows circular type references
+set_type_checking_flag = False
 
 # -- Options for HTML output -------------------------------------------------
 
