@@ -15,14 +15,17 @@ class Variable:
 
     This class is the return type of all operations in a computation graph.
 
+    Note:
+        Type annotations are missing for attributes `op` and `args`, for Sphinx does not seem to cope with forward references.
+
     Attributes:
         func: a callable returning the value of the variable given those of the dependencies
         arg_requirements_func: a callable returning the requirements bearing on a dependency given those bearing on the current variable
         dependencies: a dictionary mapping arguments of the above callable onto other variables in the computation graph
     """
     name = attr.ib(type=Optional[str], default=None)
-    op = attr.ib(type="Op", default=attr.Factory(lambda self: op(lambda: self), takes_self=True))
-    args = attr.ib(type=Dict["Variable", Any], factory=dict)
+    op = attr.ib(default=attr.Factory(lambda self: op(lambda: self), takes_self=True))
+    args = attr.ib(type=Dict, factory=dict)
     dependencies = attr.ib(type=Dict[str, Any], factory=dict)
 
     def func(self, **kwargs):
