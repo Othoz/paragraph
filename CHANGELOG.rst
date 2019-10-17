@@ -23,8 +23,8 @@ Changed
 '''''''
 - completely remove the concept of boundary, which opens the door to inconsistent behavior. Instead, only independent variables can be initialized for
   evaluation.
-- variables now hold a reference to the generating op in place of the forward and backward callables
-- variables and ops have a useful string representation
+- instances of `Variable` now hold a reference to the generating op in place of the forward and backward callables
+- instances of `Variable` and `Op` now have a useful string representation
 
 Fixed
 '''''

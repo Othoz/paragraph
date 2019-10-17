@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import MagicMock
 import attr
 
@@ -16,25 +17,27 @@ class MockReq(Requirement):
 def mock_op(name=""):
     class MockOp(Op):
         _run = MagicMock(return_value="{} return value".format(name))
-        _arg_requirements = MagicMock(return_value=MockReq("Arg requirement"))
+        arg_requirements = MagicMock(return_value=MockReq("Arg requirement"))
 
     return MockOp()
 
 
 class TestVariable:
-    def test_default_func_returns_self(self):
-        var = Variable("v1")
+    @staticmethod
+    def test_validator_raises_if_dependent_variable_is_given_a_name():
+        with pytest.raises(ValueError):
+            _ = Variable("name", dependencies={"a": Variable("name")})
 
-        assert var.func() is var
-
-    def test_str_is_correct(self):
+    @staticmethod
+    def test_str_is_correct():
         var = Variable("v1")
 
         assert str(var) == "v1"
 
 
 class TestOpDecorator:
-    def test_invokes_function_if_args_invariable(self):
+    @staticmethod
+    def test_invokes_function_if_args_invariable():
         mocked_function = MagicMock(return_value="Return value")
         mocked_operation = op(mocked_function)
 
@@ -43,7 +46,8 @@ class TestOpDecorator:
         mocked_function.assert_called_once_with(a=1, b="b")
         assert return_value == "Return value"
 
-    def test_returns_variable_if_some_arg_variable(self):
+    @staticmethod
+    def test_returns_variable_if_some_arg_variable():
         mocked_function = MagicMock(return_value="Return value")
         mocked_op = op(mocked_function)
 
@@ -54,7 +58,8 @@ class TestOpDecorator:
         assert isinstance(return_var, Variable)
         assert return_var.dependencies == {"b": input_var}
 
-    def test_string_representation(self):
+    @staticmethod
+    def test_string_representation():
         mocked_function = MagicMock(__name__="function")
         mocked_op = op(mocked_function)
         variable = Variable(name="input")
@@ -65,14 +70,16 @@ class TestOpDecorator:
 
 
 class TestOpClass:
-    def test_call_invokes_function_if_args_invariable(self):
+    @staticmethod
+    def test_call_invokes_function_if_args_invariable():
         operation = mock_op("op")
         return_value = operation(a=1, b="b")
 
         operation._run.assert_called_once_with(a=1, b="b")
         assert return_value == "op return value"
 
-    def test_call_returns_variable_if_some_arg_variable(self):
+    @staticmethod
+    def test_call_returns_variable_if_some_arg_variable():
         operation = mock_op("op")
         input_var = Variable()
         return_var = operation(a=1, b=input_var)
@@ -81,7 +88,8 @@ class TestOpClass:
         assert isinstance(return_var, Variable)
         assert return_var.dependencies == {"b": input_var}
 
-    def test_returned_variable_has_correct_name(self):
+    @staticmethod
+    def test_returned_variable_has_correct_name():
         operation = mock_op("op")
         variable = Variable(name="input")
         result = operation(arg=variable)
