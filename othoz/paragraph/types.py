@@ -35,7 +35,7 @@ class Variable:
         if self.name:
             return self.name
 
-        arg_strings = ["{}=()".format(arg, value) for arg, value in self.args.items()]
+        arg_strings = ["{}={}".format(arg, value) for arg, value in self.args.items()]
         dep_strings = ["{}={}".format(arg, var) for arg, var in self.dependencies.items()]
 
         return "{}({})".format(self.op, ",".join(arg_strings + dep_strings))
