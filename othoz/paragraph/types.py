@@ -1,29 +1,54 @@
 """Class definitions supporting the computation graph"""
 
 from typing import Callable, Dict, Any, Optional
-from functools import partial, wraps
-from itertools import filterfalse
+from functools import wraps
 
 import attr
-from attr.validators import optional, instance_of
 
 from abc import ABC, abstractmethod
 
 
-@attr.s(cmp=False)
+@attr.s(eq=False, repr=False, frozen=True)
 class Variable:
     """A generic :term:`variable`.
 
-    This class is the return type of all operations in a computation graph.
+    This class is the return type of all operations in a computation graph. Independent variables can be instantiated directly
+
+    Note:
+        Type annotations are missing for attributes `op` and `args`, for Sphinx does not seem to cope with forward references.
 
     Attributes:
-        func: a callable returning the value of the variable given those of the dependencies
-        arg_requirements_func: a callable returning the requirements bearing on a dependency given those bearing on the current variable
+        name: a string used to represent the variable. Used only for independent variables.
+        op: the operation producing the variable, of type `Op`.
+        args: a dictionary mapping invariable arguments of the above `op` onto their values
         dependencies: a dictionary mapping arguments of the above callable onto other variables in the computation graph
     """
-    func = attr.ib(type=Optional[Callable], default=attr.Factory(lambda self: lambda: self, takes_self=True), validator=optional(instance_of(Callable)))
-    arg_requirements_func = attr.ib(type=Optional[Callable], default=lambda x, y: type(x)(), validator=optional(instance_of(Callable)))
+    name = attr.ib(type=Optional[str], default=None)
+    op = attr.ib(default=None)
+    args = attr.ib(type=Dict, factory=dict)
     dependencies = attr.ib(type=Dict[str, Any], factory=dict)
+
+    @name.validator
+    def _name_only_independent_variable(self, _, value):
+        if len(self.dependencies) > 0 and value is not None:
+            raise ValueError("Only independent variables should be named explicitly.")
+        if len(self.dependencies) == 0 and value is None:
+            raise ValueError("Independent variables should be named explicitly.")
+
+    def func(self, **kwargs):
+        return self.op(**self.args, **kwargs)
+
+    def arg_requirements_func(self, req: "Requirement", arg: str):
+        return self.op.arg_requirements(req, arg)
+
+    def __repr__(self):
+        if self.name is not None:
+            return self.name
+
+        arg_strings = ["{}={}".format(arg, value) for arg, value in self.args.items()]
+        dep_strings = ["{}={}".format(arg, var) for arg, var in self.dependencies.items()]
+
+        return "{}({})".format(self.op, ",".join(arg_strings + dep_strings))
 
 
 @attr.s
@@ -79,7 +104,7 @@ class Requirement(ABC):
         return type(self)()
 
 
-@attr.s
+@attr.s(repr=False)
 class Op(ABC):
     """Abstract base class for computation graph operations.
 
@@ -91,12 +116,14 @@ class Op(ABC):
     Additional requirements can be introduced for variable arguments, globally or individually, by redefining the :meth:`_arg_requirements` method
     appropriately.
     """
+    def __repr__(self):
+        return type(self).__name__
 
     @abstractmethod
     def _run(self, **kwargs):
         """The function called to evaluate the operation, must be implemented by all concrete classes"""
 
-    def _arg_requirements(self, req: Requirement, arg: str = None) -> Requirement:  # pylint: disable=R0201
+    def arg_requirements(self, req: Requirement, arg: str = None) -> Requirement:  # pylint: disable=R0201
         """Compute the requirements on the input value for argument `arg` from the requirements `req` bearing on the output variable.
 
         The base implementation below returns an empty requirement for every argument, preserving the type. Concrete classes should redefine this method
@@ -104,12 +131,12 @@ class Op(ABC):
 
         .. warning::
 
-            This method should never update requirements *in-place*, as this would result in adversary side-effects. The recommended practice is for
-            this method to:
-             - instantiate a new Requirement instance or deep-copy the passed in `req` if information should be retained,
-             - update the new instance using in-place methods exposed by the requirement class, and return it.
+          This method should never update requirements *in-place*, as this would result in adversary side-effects. The recommended practice is for
+          this method to:
+          - instantiate a new Requirement instance or deep-copy the passed in `req` if information should be retained,
+          - update the new instance using in-place methods exposed by the requirement class, and return it.
 
-            Should the output requirement be returned unmodified, it is however safe to just return its reference as-is.
+          Should the output requirement be returned unmodified, it is however safe to just return its reference as-is.
         """
         return type(req)()
 
@@ -118,15 +145,15 @@ class Op(ABC):
         if len(args) > 0:
             raise RuntimeError("Positional arguments are not supported in computational graphs, use keyword arguments only.")
 
-        var_args = dict(filter(lambda x: isinstance(x[1], Variable), kwargs.items()))
+        var_args = {arg: var for arg, var in kwargs.items() if isinstance(var, Variable)}
 
         # The following ensures that the wrapper just returns a concrete value in absence of variable arguments
         if len(var_args) == 0:
             return self._run(**kwargs)
 
-        static_args = dict(filterfalse(lambda x: isinstance(x[1], Variable), kwargs.items()))
+        static_args = {arg: val for arg, val in kwargs.items() if not isinstance(val, Variable)}
 
-        return Variable(func=partial(self, **static_args), arg_requirements_func=self._arg_requirements, dependencies=var_args)
+        return Variable(op=self, args=static_args, dependencies=var_args)
 
 
 def op(func: Callable) -> Callable:
@@ -139,8 +166,10 @@ def op(func: Callable) -> Callable:
     Arguments:
         func: the function to transform into an Op
     """
-
     class Wrapper(Op):
+        def __repr__(self):
+            return func.__name__
+
         def _run(self, **kwargs):
             return func(**kwargs)
 

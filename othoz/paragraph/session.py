@@ -19,7 +19,7 @@ def traverse_fw(output: Iterable[Variable]) -> Generator[Variable, None, None]: 
         output: The variables whose dependencies should be traversed.
 
     Yields:
-        All dependencies of the output variables (stopping at the boundary), each variable yielded occurring before the variables depending thereupon.
+        All dependencies of the output variables, each variable yielded occurring before the variables depending thereupon.
 
     Raises:
         ValueError: If a cyclic dependency is detected in the graph.
@@ -88,7 +88,7 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
     """
     for var in args:
         if len(var.dependencies) > 0:
-            raise ValueError("An argument is provided for variable {}, but it has dependencies."
+            raise ValueError("An initialization value is provided for variable {}, but it has dependencies."
                              "Proceeding further could result in an inconsistent evaluation.".format(var))
     cache = args.copy()
 
@@ -99,6 +99,10 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
 
         for var in traverse_fw(output):
             if var in cache:
+                continue
+
+            if len(var.dependencies) == 0:
+                cache[var] = var
                 continue
 
             arguments = {}
@@ -150,7 +154,7 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
     for arg_dict in iter_args:
         for var in arg_dict:
             if var in args:
-                raise ValueError("A value for variable {} is provided in `iter_args` and in `args`."
+                raise ValueError("An initialization value for variable {} is provided in `iter_args` and in `args`."
                                  "Proceeding further could result in an inconsistent evaluation.".format(var))
         iter_values = dict(zip(unresolved_output_vars, evaluate(unresolved_output_vars, args=args, max_workers=max_workers)))
         yield [partial_values[var] if not isinstance(partial_values[var], Variable) else iter_values[partial_values[var]] for var in output]
