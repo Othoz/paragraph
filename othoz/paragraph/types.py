@@ -133,8 +133,8 @@ class Op(ABC):
 
             This method should never update requirements *in-place*, as this would result in adversary side-effects. The recommended practice is for
             this method to:
-             - instantiate a new Requirement instance or deep-copy the passed in `req` if information should be retained,
-             - update the new instance using in-place methods exposed by the requirement class, and return it.
+              - instantiate a new Requirement instance or deep-copy the passed in `req` if information should be retained,
+              - update the new instance using in-place methods exposed by the requirement class, and return it.
 
             Should the output requirement be returned unmodified, it is however safe to just return its reference as-is.
         """
