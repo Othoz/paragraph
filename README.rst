@@ -31,7 +31,7 @@ In *paragraph*, turning a regular Python function into an op is as simple as dec
 
 The operation can then be applied to objects of both Variable and non-Variable type as follows:
 
->>> v1 = Variable()
+>>> v1 = Variable("v1")
 >>> v2 = f(a=2, b=v1)
 
 Ops differ from regular Python functions in their behavior upon receiving an argument of type Variable. In such a case, they are not executed,
@@ -76,8 +76,8 @@ from multiple usages of the same variable. This method should fulfill a small nu
 
 Once all components are in place, requirements can be backpropagated:
 
->>> reqs = solve_requirements(output=g2.output, output_requirements=MyRequirements(date_range=ExactRange("2001-01-01", "2001-02-01")))
->>> reqs[g1.input].date_range  # Holds the backpropagated required date_range
+>>> reqs = solve_requirements(output=v2, output_requirements=MyRequirements(date_range=ExactRange("2001-01-01", "2001-02-01")))
+>>> reqs[v1].date_range  # Holds the backpropagated required date_range
 
 
 Caveats
