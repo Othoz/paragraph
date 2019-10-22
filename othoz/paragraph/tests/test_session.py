@@ -2,7 +2,7 @@ from concurrent.futures.thread import ThreadPoolExecutor
 
 import pytest
 
-from othoz.paragraph.types import Variable, SequentialExecutor
+from othoz.paragraph.types import Variable
 from othoz.paragraph.session import traverse_fw, traverse_bw, evaluate, solve_requirements, apply
 from othoz.paragraph.tests.test_types import MockReq, mock_op
 
@@ -20,6 +20,12 @@ def graph():
     graph.output = [output0, output1]
 
     return graph
+
+
+@pytest.fixture
+def thread_pool_executor():
+    with ThreadPoolExecutor() as executor:
+        yield executor
 
 
 class TestForwardGenerator:
@@ -40,41 +46,53 @@ class TestBackwardGenerator:
         assert items == expected
 
 
-@pytest.mark.parametrize("executor", [pytest.param(SequentialExecutor(), id="Single thread"),
-                                      pytest.param(ThreadPoolExecutor(max_workers=1), id="Multi-threaded")])
 class TestEvaluate:
     @staticmethod
-    def test_variable_evaluation_is_correct(graph, executor):
-        res = evaluate(graph.output, args={graph.input: "Input value"}, executor=executor)
+    def test_sequential_evaluation_is_correct(graph):
+        res = evaluate(graph.output, args={graph.input: "input_value"})
 
-        assert res[0] == "op0 return value"
-        assert res[1] == "op1 return value"
+        assert res[0] == "op0_return_value"
+        assert res[1] == "op1_return_value"
 
-        graph.output[0].op._run.assert_called_once_with(arg="Input value")
-        graph.output[1].op._run.assert_called_once_with(arg0="Input value", arg1="op0 return value")
+        graph.output[0].op._run.assert_called_once_with(arg="input_value")
+        graph.output[1].op._run.assert_called_once_with(arg0="input_value", arg1="op0_return_value")
 
     @staticmethod
-    def test_evaluation_is_lazy(graph, executor):
-        res = evaluate([graph.output[0]], args={graph.input: "Input value"}, executor=executor)
+    def test_parallel_evaluation_is_correct(graph, thread_pool_executor):
+        res = evaluate(graph.output, args={graph.input: "input_value"}, executor=thread_pool_executor)
+
+        assert res[0] == "op0_return_value"
+        assert res[1] == "op1_return_value"
+
+        graph.output[0].op._run.assert_called_once_with(arg="input_value")
+        graph.output[1].op._run.assert_called_once_with(arg0="input_value", arg1="op0_return_value")
+
+    @staticmethod
+    def test_evaluation_is_lazy(graph):
+        res = evaluate([graph.output[0]], args={graph.input: "input_value"})
         operation = graph.output[1].op
 
-        assert res[0] == "op0 return value"
+        assert res[0] == "op0_return_value"
         assert not operation._run.called
 
 
-@pytest.mark.parametrize("executor", [pytest.param(SequentialExecutor(), id="Single thread"),
-                                      pytest.param(ThreadPoolExecutor(), id="Multi-threaded")])
 class TestApply:
     @staticmethod
-    def test_apply_returns_correct_number_of_results(graph, executor):
-        res = list(apply(graph.output, args={}, iter_args=[{graph.input: "Input value"}] * 5, executor=executor))
+    def test_sequential_apply_returns_correct_number_of_results(graph):
+        res = list(apply(graph.output, args={}, iter_args=[{graph.input: "input_value"}] * 5))
 
         assert len(res) == 5
 
     @staticmethod
-    def test_apply_raises_on_overwriting_an_input_variable(graph, executor):
+    def test_parallel_apply_returns_correct_number_of_results(graph, thread_pool_executor):
+        res = list(apply(graph.output, args={}, iter_args=[{graph.input: "input_value"}] * 5, executor=thread_pool_executor))
+
+        assert len(res) == 5
+
+    @staticmethod
+    def test_parallel_apply_raises_on_overwriting_an_input_variable(graph, thread_pool_executor):
         with pytest.raises(ValueError):
-            list(apply(graph.output, args={graph.input: "Input value"}, iter_args=[{graph.input: "Input value"}] * 5, executor=executor))
+            list(apply(graph.output, args={graph.input: "input_value"}, iter_args=[{graph.input: "input_value"}] * 5, executor=thread_pool_executor))
 
 
 class TestRequirementSolving:

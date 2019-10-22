@@ -16,7 +16,9 @@ class MockReq(Requirement):
 
 def mock_op(name=""):
     class MockOp(Op):
-        _run = MagicMock(return_value="{} return value".format(name))
+        def __repr__(self):
+            return name
+        _run = MagicMock(return_value="{}_return_value".format(name))
         arg_requirements = MagicMock(return_value=MockReq("Arg requirement"))
 
     return MockOp()
@@ -81,7 +83,7 @@ class TestOpClass:
         return_value = operation(a=1, b="b")
 
         operation._run.assert_called_once_with(a=1, b="b")
-        assert return_value == "op return value"
+        assert return_value == "op_return_value"
 
     @staticmethod
     def test_call_returns_variable_if_some_arg_variable():
@@ -99,4 +101,4 @@ class TestOpClass:
         variable = Variable(name="input")
         result = operation(arg=variable)
 
-        assert str(result) == "MockOp(arg=input)"
+        assert str(result) == "op(arg=input)"
