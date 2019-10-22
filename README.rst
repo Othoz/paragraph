@@ -36,10 +36,10 @@ The operation can then be applied to objects of both Variable and non-Variable t
 
 Ops differ from regular Python functions in their behavior upon receiving an argument of type Variable. In such a case, they are not executed,
 but instead pack the knowledge required for deferred execution into an instance of Variable, and return this variable.
-Then, a variable can be evaluated by invoking the function :func:`othoz.paragraph.session.evaluate` function and passing in initialization values for the input
+Then, a variable can be evaluated by invoking the function :func:`othoz.paragraph.session.evaluate` and passing in initialization values for the input
 variables alongside the target variable:
 
->>> value = evaluate(v2, args={v1: 4})
+>>> value = evaluate([v2], args={v1: 4})
 
 Going further
 =============
