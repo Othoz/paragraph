@@ -1,6 +1,6 @@
 """Class definitions supporting the computation graph"""
 from concurrent.futures import Future
-from typing import Callable, Dict, Any, Optional
+from typing import Callable, Dict, Optional
 from functools import wraps
 
 import attr
