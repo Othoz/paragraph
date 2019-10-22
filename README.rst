@@ -36,22 +36,52 @@ The operation can then be applied to objects of both Variable and non-Variable t
 
 Ops differ from regular Python functions in their behavior upon receiving an argument of type Variable. In such a case, they are not executed,
 but instead pack the knowledge required for deferred execution into an instance of Variable, and return this variable.
-Then, a variable can be evaluated by invoking the :func:`evaluate` function and passing in initialization values for the input variables alongside the target
-variable:
+Then, a variable can be evaluated by invoking the function :func:`othoz.paragraph.session.evaluate` function and passing in initialization values for the input
+variables alongside the target variable:
 
->>> evaluate(v2, args={v1: 4})
+>>> value = evaluate(v2, args={v1: 4})
 
 Going further
 =============
+
+Partial evaluation
+''''''''''''''''''
+
+When the arguments passed onto :func:`othoz.paragraph.session.evaluate` are insufficient to resolve fully an output variable (that is, at least one transitive
+dependency of the output variable is left uninitialized), the value returned for the output variable is simply another variable. This new variable has in
+general fewer dependencies, for dependencies fully resolved upon evaluation are replaced by their values.
+
+
+Mapping over inputs
+'''''''''''''''''''
+
+The function :func:`othoz.paragraph.session.apply` extends :func:`othoz.paragraph.session.evaluate` to take, in addition, an iterator over input arguments to
+the computation graph. It takes advantage of partial evaluation to reduce the number of operations evaluated at each iteration.
+
 
 Parallel execution
 ''''''''''''''''''
 
 Building upon the guarantees granted by a forward traversal, parallel execution of ops comes at no additional cost. This feature relies on the `concurrent`
-package from the Python standard library: ops are simply submitted to a thread pool for evaluation.
+package from the Python standard library: ops are simply submitted to an instance of :class:`concurrent.futures.Executor` for evaluation. The executor should
+be provided externally. In particular, the responsibility for shutting down the executor properly lies on the user. In absence of an executor, variables are
+evaluated in a sequential manner, yet still lazily.
 
-By default, a single thread is used to exclude pitfalls stemming from thread unsafe computations. Provided all operations are thread-safe, setting `max_workers`
-to some value is all it takes to take full advantage of this feature.
+Should an operation be executed in the main process, it can be marked as such by setting the attribute `Op.thread_safe` to False.
+
+Example usage:
+
+>>> ...graph definition...
+>>> with ThreadPoolExecutor() as ex:
+...     res = evaluate([output], args={input: input_value}, executor=ex)
+
+.. note::
+    Argument values passed onto :func:`othoz.paragraph.session.evaluate` can be of type :class:`concurrent.futures.Future`, in which case the consuming
+    operations will simply block until the result is available.
+
+.. note::
+    Similarly, an executor can be passed onto the function :func:`othoz.paragraph.session.apply`.
+
 
 Backward propagation
 ''''''''''''''''''''
@@ -67,9 +97,9 @@ requirements that should bear on the said variable argument.
 Requirements are substantiated by mixin classes, which add attributes and assume full responsibility for their proper aggregation. They are usually defined in
 the same module as the operations using them. Then, a *compound requirements* class is simply defined by:
 
-    >>> @attr.s
-    ... class MyRequirements(DateRangeRequirement, DatasetContentsRequirement):
-    ...     pass
+>>> @attr.s
+... class MyRequirements(DateRangeRequirement, DatasetContentsRequirement):
+...     pass
 
 A requirement class must define the method `merge(self, other)` that aggregates requirements (more accurately, the requirement attributes it defines) arising
 from multiple usages of the same variable. This method should fulfill a small number of properties documented in the base class.
@@ -142,8 +172,8 @@ Contribution guidelines
 * Code review: Use Bitbucket pull-requests to submit changes to this repository.
 
 
-Who do I talk to?
-=================
+Whom do I talk to?
+==================
 
 * Preferably use Slack to talk to bourguignon@othoz.com, richter@othoz.com or eitz@othoz.com
 * Repo owner or admin: bourguignon@othoz.com
