@@ -5,7 +5,7 @@ from itertools import filterfalse
 from typing import Dict, Any, List, Generator, Iterable, Optional
 from collections import defaultdict, deque
 
-from othoz.paragraph.types import Variable, Requirement
+from othoz.paragraph.types import Variable, Requirement, Op
 
 
 def traverse_fw(output: Iterable[Variable]) -> Generator[Variable, None, None]:  # noqa: C901
@@ -109,10 +109,13 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], executor: Op
                 value = cache[dep]
             arguments[arg] = value
 
+        arguments.update(var.args)
+        pos_args, kw_args = Op.split_args(arguments)
+
         if executor is not None and var.op.thread_safe:
-            cache[var] = executor.submit(var.op, **var.args, **arguments)
+            cache[var] = executor.submit(var.op, *pos_args, **kw_args)
         else:
-            cache[var] = var.op(**var.args, **arguments)
+            cache[var] = var.op(*pos_args, **kw_args)
 
     return [cache[var].result() if isinstance(cache[var], Future) else cache[var] for var in output]
 
