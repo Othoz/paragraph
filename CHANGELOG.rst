@@ -16,6 +16,14 @@ Possible types of changes are:
 - ``Fixed`` for any bug fixes
 - ``Security`` in case of vulnerabilities
 
+0.3.1 (unreleased)
+------------------
+
+Added
+'''''
+- eager mode using the eponymous context manager in session.py
+
+
 0.3.0 - 23.10.2019
 ------------------
 
