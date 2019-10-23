@@ -1,6 +1,7 @@
 """Class definitions supporting the computation graph"""
 from concurrent.futures import Future
-from typing import Callable, Dict, Optional
+from itertools import chain
+from typing import Callable, Dict, Optional, Tuple, List, Any
 from functools import wraps
 
 import attr
@@ -120,8 +121,17 @@ class Op(ABC):
     def __repr__(self):
         return type(self).__name__
 
+    @staticmethod
+    def split_args(args: Dict) -> Tuple[List[Any], Dict[str, Any]]:
+        """Separate positional from keyword arguments in a dict.
+
+        This method extracts `args` entries with a key of type integer, and collates them into a list
+        """
+        pos_args = [args.pop(k) for k in sorted(filter(lambda x: isinstance(x, int), args))]
+        return pos_args, args
+
     @abstractmethod
-    def _run(self, **kwargs):
+    def _run(self, *args, **kwargs):
         """The function called to evaluate the operation, must be implemented by all concrete classes"""
 
     def arg_requirements(self, req: Requirement, arg: str = None) -> Requirement:  # pylint: disable=R0201
@@ -143,18 +153,19 @@ class Op(ABC):
 
     def __call__(self, *args, **kwargs):
         """Wraps an instance method to work within the computational graph"""
-        if len(args) > 0:
-            raise RuntimeError("Positional arguments are not supported in computational graphs, use keyword arguments only.")
+        #if len(args) > 0:
+        #    raise RuntimeError("Positional arguments are not supported in computational graphs, use keyword arguments only.")
 
-        kwargs = {arg: value.result() if isinstance(value, Future) else value for arg, value in kwargs.items()}
+        all_args = {arg: value.result() if isinstance(value, Future) else value for arg, value in chain(enumerate(args), kwargs.items())}
 
-        var_args = {arg: var for arg, var in kwargs.items() if isinstance(var, Variable)}
+        var_args = {arg: var for arg, var in all_args.items() if isinstance(var, Variable)}
 
         # The following ensures that the wrapper just returns a concrete value in absence of variable arguments
         if len(var_args) == 0:
-            return self._run(**kwargs)
+            pos_args, kw_args = Op.split_args(all_args)
+            return self._run(*pos_args, **kw_args)
 
-        static_args = {arg: val for arg, val in kwargs.items() if not isinstance(val, Variable)}
+        static_args = {arg: val for arg, val in all_args.items() if not isinstance(val, Variable)}
 
         return Variable(op=self, args=static_args, dependencies=var_args)
 
@@ -178,7 +189,7 @@ def op(func: Callable) -> Callable:
         def __repr__(self):
             return func.__name__
 
-        def _run(self, **kwargs):
-            return func(**kwargs)
+        def _run(self, *args, **kwargs):
+            return func(*args, **kwargs)
 
     return wraps(func)(Wrapper())

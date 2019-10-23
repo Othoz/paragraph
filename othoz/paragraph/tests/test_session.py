@@ -1,3 +1,4 @@
+from concurrent.futures.process import ProcessPoolExecutor
 from concurrent.futures.thread import ThreadPoolExecutor
 
 import pytest
@@ -15,7 +16,7 @@ def graph():
     output0 = op1(arg=graph.input)
 
     op1 = mock_op("op1")
-    output1 = op1(arg0=graph.input, arg1=output0)
+    output1 = op1(graph.input, arg1=output0)
 
     graph.output = [output0, output1]
 
@@ -55,7 +56,7 @@ class TestEvaluate:
         assert res[1] == "op1_return_value"
 
         graph.output[0].op._run.assert_called_once_with(arg="input_value")
-        graph.output[1].op._run.assert_called_once_with(arg0="input_value", arg1="op0_return_value")
+        graph.output[1].op._run.assert_called_once_with("input_value", arg1="op0_return_value")
 
     @staticmethod
     def test_parallel_evaluation_is_correct(graph, thread_pool_executor):
@@ -65,7 +66,7 @@ class TestEvaluate:
         assert res[1] == "op1_return_value"
 
         graph.output[0].op._run.assert_called_once_with(arg="input_value")
-        graph.output[1].op._run.assert_called_once_with(arg0="input_value", arg1="op0_return_value")
+        graph.output[1].op._run.assert_called_once_with("input_value", arg1="op0_return_value")
 
     @staticmethod
     def test_evaluation_is_lazy(graph):
