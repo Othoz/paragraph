@@ -48,7 +48,7 @@ Going further
 Partial evaluation
 ''''''''''''''''''
 
-When the arguments passed onto :func:`othoz.paragraph.session.evaluate` are insufficient to resolve fully an output variable (that is, at least one transitive
+When the arguments passed to :func:`othoz.paragraph.session.evaluate` are insufficient to resolve fully an output variable (that is, at least one transitive
 dependency of the output variable is left uninitialized), the value returned for the output variable is simply another variable. This new variable has in
 general fewer dependencies, for dependencies fully resolved upon evaluation are replaced by their values.
 
@@ -78,11 +78,11 @@ Example usage:
 ...     res = evaluate([output], args={input: input_value}, executor=ex)
 
 .. note::
-    Argument values passed onto :func:`othoz.paragraph.session.evaluate` can be of type :class:`concurrent.futures.Future`, in which case the consuming
+    Argument values passed to :func:`othoz.paragraph.session.evaluate` can be of type :class:`concurrent.futures.Future`, in which case the consuming
     operations will simply block until the result is available.
 
 .. note::
-    Similarly, an executor can be passed onto the function :func:`othoz.paragraph.session.apply`.
+    Similarly, an executor can be passed to the function :func:`othoz.paragraph.session.apply`.
 
 
 Backward propagation
