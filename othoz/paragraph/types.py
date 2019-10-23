@@ -22,7 +22,7 @@ class Variable:
     Attributes:
         name: a string used to represent the variable. The attribute is mandatory for independent variables and None (the default) otherwise.
         op: the operation producing the variable, of type `Op`.
-        args: a dictionary mapping invariable arguments of the above `op` onto their values, of type `Dict[Variable, Any]`.
+        args: a dictionary mapping arguments of the above `op` onto their values, of type `Dict[Variable, Any]`.
         dependencies: a dictionary mapping arguments of the above callable onto other variables, of type `Dict[str, Variable]`.
     """
     name = attr.ib(type=Optional[str], default=None)
@@ -113,7 +113,7 @@ class Op(ABC):
     appropriately.
 
     Attributes:
-        thread_safe: A boolean, indicates if is safe to execute the function in a separate thread.
+        thread_safe: If False, the op is always executed in the main thread. Defaults to True.
     """
     thread_safe = attr.ib(type=bool, default=True)
 
