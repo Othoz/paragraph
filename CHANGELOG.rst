@@ -16,7 +16,7 @@ Possible types of changes are:
 - ``Fixed`` for any bug fixes
 - ``Security`` in case of vulnerabilities
 
-0.3.0 (unreleased)
+0.3.0 - 23.10.2019
 ------------------
 
 Changed
