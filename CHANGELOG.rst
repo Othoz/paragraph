@@ -21,6 +21,7 @@ Possible types of changes are:
 
 Changed
 '''''''
+- Positional arguments are now allowed when invoking ops
 - An executor has to be provided externally for parallel execution to take place.
 - `Op.__call__` now accepts inputs of type `concurrent.futures.Future`.
 - completely remove the concept of boundary, which opens the door to inconsistent behavior. Instead, only independent variables can be initialized for
