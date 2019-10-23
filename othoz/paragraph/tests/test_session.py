@@ -1,7 +1,6 @@
-from concurrent.futures.process import ProcessPoolExecutor
-from concurrent.futures.thread import ThreadPoolExecutor
-
 import pytest
+
+from concurrent.futures.thread import ThreadPoolExecutor
 
 from othoz.paragraph.types import Variable
 from othoz.paragraph.session import traverse_fw, traverse_bw, evaluate, solve_requirements, apply

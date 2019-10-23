@@ -1,11 +1,10 @@
 """Class definitions supporting the computation graph"""
+import attr
+
 from concurrent.futures import Future
 from itertools import chain
 from typing import Callable, Dict, Optional, Tuple, List, Any
 from functools import wraps
-
-import attr
-
 from abc import ABC, abstractmethod
 
 
@@ -153,11 +152,7 @@ class Op(ABC):
 
     def __call__(self, *args, **kwargs):
         """Wraps an instance method to work within the computational graph"""
-        #if len(args) > 0:
-        #    raise RuntimeError("Positional arguments are not supported in computational graphs, use keyword arguments only.")
-
         all_args = {arg: value.result() if isinstance(value, Future) else value for arg, value in chain(enumerate(args), kwargs.items())}
-
         var_args = {arg: var for arg, var in all_args.items() if isinstance(var, Variable)}
 
         # The following ensures that the wrapper just returns a concrete value in absence of variable arguments

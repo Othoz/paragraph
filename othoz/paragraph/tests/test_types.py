@@ -1,6 +1,7 @@
 import pytest
-from unittest.mock import MagicMock
 import attr
+
+from unittest.mock import MagicMock
 
 from othoz.paragraph.types import op, Op, Variable, Requirement
 

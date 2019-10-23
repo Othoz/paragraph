@@ -2,7 +2,7 @@
 
 from concurrent.futures import Executor, Future
 from itertools import filterfalse
-from typing import Dict, Any, List, Generator, Iterable, Optional, Tuple
+from typing import Dict, Any, List, Generator, Iterable, Optional
 from collections import defaultdict, deque
 
 from othoz.paragraph.types import Variable, Requirement, Op
