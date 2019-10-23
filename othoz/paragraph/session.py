@@ -4,8 +4,17 @@ from concurrent.futures import Executor, Future
 from itertools import filterfalse
 from typing import Dict, Any, List, Generator, Iterable, Optional
 from collections import defaultdict, deque
+from contextlib import contextmanager
 
 from othoz.paragraph.types import Variable, Requirement, Op
+
+
+@contextmanager
+def eager_mode():
+    call = Op.__call__
+    Op.__call__ = lambda self, *a, **k: self._run(*a, **k)
+    yield
+    Op.__call__ = call
 
 
 def traverse_fw(output: Iterable[Variable]) -> Generator[Variable, None, None]:  # noqa: C901

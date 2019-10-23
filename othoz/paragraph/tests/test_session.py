@@ -3,17 +3,16 @@ import pytest
 from concurrent.futures.thread import ThreadPoolExecutor
 
 from othoz.paragraph.types import Variable
-from othoz.paragraph.session import traverse_fw, traverse_bw, evaluate, solve_requirements, apply
+from othoz.paragraph.session import eager_mode, traverse_fw, traverse_bw, evaluate, solve_requirements, apply
 from othoz.paragraph.tests.test_types import MockReq, mock_op
 
 
 @pytest.fixture
 def graph():
     graph = lambda: None  # noqa: E731
-    op1 = mock_op("op0")
+    op0 = mock_op("op0")
     graph.input = Variable("input")
-    output0 = op1(arg=graph.input)
-
+    output0 = op0(arg=graph.input)
     op1 = mock_op("op1")
     output1 = op1(graph.input, arg1=output0)
 
@@ -26,6 +25,21 @@ def graph():
 def thread_pool_executor():
     with ThreadPoolExecutor() as executor:
         yield executor
+
+
+class TestEagerMode:
+    @staticmethod
+    def test_no_variable_returned():
+        with eager_mode():
+            op0 = mock_op("op0")
+            input = "input_value"
+            output0 = op0(arg=input)
+            op0._run.assert_called_once_with(arg=input)
+            assert output0 == "op0_return_value"
+            op1 = mock_op("op1")
+            output1 = op1(input, arg1=output0)
+            op1._run.assert_called_once_with(input, arg1="op0_return_value")
+            assert output1 == "op1_return_value"
 
 
 class TestForwardGenerator:

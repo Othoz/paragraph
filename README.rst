@@ -85,6 +85,17 @@ Example usage:
     Similarly, an executor can be passed to the function :func:`othoz.paragraph.session.apply`.
 
 
+Eager mode
+''''''''''
+
+Within the context manager `othoz.paragraph.session.eager_mode`, ops are executed eagerly: the underlying `_run` method is invoked directly rather than
+returning an instance of :class:`Variable`. In this mode, arguments of type `Variable` are generally not accepted. No concurrent evaluation occurs in eager
+mode.
+
+This mode is particularly useful when testing or debugging a computation graph without modifying the code defining it, by simply bypassing the machinery set
+up by the framework.
+
+
 Backward propagation
 ''''''''''''''''''''
 
@@ -166,6 +177,7 @@ Development Environment Setup
 Running the code in the repository requires that you have set up your
 computer according to the standard Othoz development setup (conda, gcloud, …),
 see `Handbook V: Production + Development Infrastructure <https://docs.google.com/document/d/1yxAtV9DCNeiYpSIJF_iChZKd60XdGQfoKV6GiY07wJM/edit#heading=h.7z9b4drr2v0u>`_.
+
 
 Contribution guidelines
 =======================
