@@ -21,6 +21,8 @@ Possible types of changes are:
 
 Changed
 '''''''
+- An executor has to be provided externally for parallel execution to take place.
+- `Op.__call__` now accepts inputs of type `concurrent.futures.Future`.
 - completely remove the concept of boundary, which opens the door to inconsistent behavior. Instead, only independent variables can be initialized for
   evaluation.
 - instances of `Variable` now hold a reference to the generating op in place of the forward and backward callables

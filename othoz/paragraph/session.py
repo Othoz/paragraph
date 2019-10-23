@@ -1,8 +1,8 @@
 """Algorithms for traversing and evaluating a computation graph."""
 
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import Executor, Future
 from itertools import filterfalse
-from typing import Dict, Any, Optional, List, Generator, Iterable
+from typing import Dict, Any, List, Generator, Iterable, Optional
 from collections import defaultdict, deque
 
 from othoz.paragraph.types import Variable, Requirement
@@ -33,16 +33,12 @@ def traverse_fw(output: Iterable[Variable]) -> Generator[Variable, None, None]: 
         path = [var]
 
         while len(path) > 0:
-
             for dep in path[-1].dependencies.values():
-
                 if dep in path:
                     raise ValueError("Cyclic dependency detected for {}, cannot proceed with iteration.".format(dep))
-
                 if dep not in visited:
                     path.append(dep)
                     break
-
             else:
                 yield path[-1]
                 visited.append(path.pop())
@@ -66,19 +62,19 @@ def _count_usages(output: Iterable[Variable]) -> Dict[Variable, int]:
     return usage_counts
 
 
-def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers: Optional[int] = 1) -> List:  # noqa: C901
+def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], executor: Optional[Executor] = None) -> List:  # noqa: C901
     """Evaluate the specified output variable.
 
-    The argument values provided through `args` can be of type Variable. In this case, output variables depending on such arguments will evaluate to a new
-    instance of Variable.
-
-    Warning:
-      If an output variable is unresolved by the arguments provided as `args`, a value of type `Variable` will be returned at the corresponding position.
+    The argument values provided through `args` should be:
+      - of the type expected by the operations consuming the variable,
+      - of type :class:`othoz.paragraph.types.Variable`, in which case dependent output variables will evaluate to a new instance of
+        :class:`othoz.paragraph.types.Variable`,
+      - of type :class:`concurrent.futures.Future`, in which case the result will be awaited by consuming ops. The result should be of either above types.
 
     Arguments:
       output: The variables to evaluate.
       args: Initialization of the input variables, none of which should have dependencies.
-      max_workers: The maximum number of threads to run concurrently. If None, this is automatically set to 5 x num_cpus.
+      executor: An instance of concurrent.futures.Executor, to which op evaluations are submitted. If None, the default, evaluation proceeds sequentially.
 
     Returns:
       A list of values of the same size as `output`. The entry at index `i` is the computed value of `output[i]`.
@@ -95,52 +91,46 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], max_workers:
     # Discover usages so cached references can be released at earliest opportunity
     usage_counts = _count_usages(output=output)
 
-    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+    for var in traverse_fw(output):
+        if var in cache:
+            continue
 
-        for var in traverse_fw(output):
-            if var in cache:
-                continue
+        if len(var.dependencies) == 0:
+            cache[var] = var
+            continue
 
-            if len(var.dependencies) == 0:
-                cache[var] = var
-                continue
+        arguments = {}
 
-            arguments = {}
+        for arg, dep in var.dependencies.items():
+            usage_counts[dep] -= 1
+            if usage_counts[dep] == 0 and dep not in output:
+                value = cache.pop(dep)
+            else:
+                value = cache[dep]
+            arguments[arg] = value
 
-            for arg, dep in var.dependencies.items():
-                usage_counts[dep] -= 1
-                if usage_counts[dep] == 0 and dep not in output:
-                    value = cache.pop(dep)
-                else:
-                    value = cache[dep]
-                arguments[arg] = value
-
-            def func(**args):
-                arguments = {arg: value.result() if isinstance(value, Future) else value for arg, value in args.items()}
-                return var.func(**arguments)
-
-            cache[var] = ex.submit(func, **arguments)
+        if executor is not None and var.op.thread_safe:
+            cache[var] = executor.submit(var.op, **var.args, **arguments)
+        else:
+            cache[var] = var.op(**var.args, **arguments)
 
     return [cache[var].result() if isinstance(cache[var], Future) else cache[var] for var in output]
 
 
-def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable[Dict[Variable, Any]], max_workers: int = 1)\
+def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable[Dict[Variable, Any]], executor: Optional[Executor] = None)\
         -> Generator[List[Any], None, None]:
     """Iterate the evaluation of a set of output variables over input arguments.
 
     This function accepts two types of arguments: `args` receives *static* arguments, using which a first evaluation of the output variables is executed;
     then, `iter_args` receives an iterable over input arguments, which are iterated over to resolve the output variables left unresolved after the first
-    evaluation. The values of the output variables obtained after each iteration are then yielded.
-
-    Warning:
-      If an output variable is unresolved by the arguments provided as `args` and a value of `iter_args`, a value of type `Variable` will be returned at the
-      corresponding position.
+    evaluation. The values of the output variables obtained after each iteration are then yielded. See :meth:`evaluate` for the constraints bearing on the
+    types of the values provided in both `args` and `iter_args`.
 
     Arguments:
       output: The variables to evaluate.
       args: A dictionary mapping input variables onto input values.
       iter_args: An iterable over dictionaries mapping input variables onto input values.
-      max_workers: The maximum number of threads to run concurrently. If None, this is automatically set to 5 x num_cpus.
+      executor: An instance of concurrent.futures.Executor to which op evaluations are submitted. If None (the default), evaluation proceeds sequentially.
 
     Yields:
       A list of values of the same size as `output`. The entry at index `i` is the computed value of `output[i]`.
@@ -148,7 +138,7 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
     Raises:
       ValueError: If a dynamic argument assigns a value to a variable appearing in static arguments, as proceeding would produce inconsistent results.
     """
-    partial_values = dict(zip(output, evaluate(output, args=args, max_workers=max_workers)))
+    partial_values = dict(zip(output, evaluate(output, args=args, executor=executor)))
     unresolved_output_vars = [partial_values[var] for var in output if isinstance(partial_values[var], Variable)]
 
     for arg_dict in iter_args:
@@ -156,7 +146,7 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
             if var in args:
                 raise ValueError("An initialization value for variable {} is provided in `iter_args` and in `args`."
                                  "Proceeding further could result in an inconsistent evaluation.".format(var))
-        iter_values = dict(zip(unresolved_output_vars, evaluate(unresolved_output_vars, args=args, max_workers=max_workers)))
+        iter_values = dict(zip(unresolved_output_vars, evaluate(unresolved_output_vars, args=args, executor=executor)))
         yield [partial_values[var] if not isinstance(partial_values[var], Variable) else iter_values[partial_values[var]] for var in output]
 
 
@@ -188,7 +178,6 @@ def traverse_bw(output: List[Variable]) -> Generator[Variable, None, None]:
         cur = queue.popleft()
 
         for dep in cur.dependencies.values():
-
             usage_counts[dep] -= 1
             if usage_counts[dep] == 0:
                 queue.append(dep)
@@ -197,25 +186,22 @@ def traverse_bw(output: List[Variable]) -> Generator[Variable, None, None]:
 
 
 def solve_requirements(output_requirements: Dict[Variable, Requirement]) -> Dict[Variable, Requirement]:
-    """Backward propagate requirements from the output variable to its transitive dependencies
+    """Backward propagate requirements from the output variables to their transitive dependencies
 
     Arguments:
         output_requirements: the requirements to be fulfilled on output
-        boundary: resolution of requirements stops whenever a Variable in this list is encountered
 
     Returns:
-        A dictionary mapping the dependencies of `output` onto their resolved requirement dictionaries
+        A dictionary mapping all transitive dependencies of `output` onto their resolved requirement dictionaries
     """
     reqs = output_requirements.copy()
 
     for var in traverse_bw(list(output_requirements)):
         for arg, dep in var.dependencies.items():
-            arg_req = var.arg_requirements_func(reqs[var], arg)
-
+            arg_req = var.op.arg_requirements(reqs[var], arg)
             # Ensure merge operates on a new instance
             if dep not in reqs:
                 reqs[dep] = type(arg_req)()
-
             reqs[dep].merge(arg_req)
 
     return reqs

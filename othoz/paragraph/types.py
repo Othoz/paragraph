@@ -1,6 +1,6 @@
 """Class definitions supporting the computation graph"""
-
-from typing import Callable, Dict, Any, Optional
+from concurrent.futures import Future
+from typing import Callable, Dict, Optional
 from functools import wraps
 
 import attr
@@ -12,34 +12,30 @@ from abc import ABC, abstractmethod
 class Variable:
     """A generic :term:`variable`.
 
-    This class is the return type of all operations in a computation graph. Independent variables can be instantiated directly
+    This class is the return type of all operations in a computation graph. Independent variables can be instantiated directly as follows:
+
+        >>> my_var = Variable(name="my_var")
 
     Note:
         Type annotations are missing for attributes `op` and `args`, for Sphinx does not seem to cope with forward references.
 
     Attributes:
-        name: a string used to represent the variable. Used only for independent variables.
+        name: a string used to represent the variable. The attribute is mandatory for independent variables and None (the default) otherwise.
         op: the operation producing the variable, of type `Op`.
-        args: a dictionary mapping invariable arguments of the above `op` onto their values
-        dependencies: a dictionary mapping arguments of the above callable onto other variables in the computation graph
+        args: a dictionary mapping arguments of the above `op` onto their values, of type `Dict[Variable, Any]`.
+        dependencies: a dictionary mapping arguments of the above callable onto other variables, of type `Dict[str, Variable]`.
     """
     name = attr.ib(type=Optional[str], default=None)
     op = attr.ib(default=None)
     args = attr.ib(type=Dict, factory=dict)
-    dependencies = attr.ib(type=Dict[str, Any], factory=dict)
+    dependencies = attr.ib(factory=dict)
 
     @name.validator
     def _name_only_independent_variable(self, _, value):
         if len(self.dependencies) > 0 and value is not None:
-            raise ValueError("Only independent variables should be named explicitly.")
+            raise ValueError("Only independent variables can be given a name.")
         if len(self.dependencies) == 0 and value is None:
-            raise ValueError("Independent variables should be named explicitly.")
-
-    def func(self, **kwargs):
-        return self.op(**self.args, **kwargs)
-
-    def arg_requirements_func(self, req: "Requirement", arg: str):
-        return self.op.arg_requirements(req, arg)
+            raise ValueError("Independent variables must be given a name.")
 
     def __repr__(self):
         if self.name is not None:
@@ -48,7 +44,7 @@ class Variable:
         arg_strings = ["{}={}".format(arg, value) for arg, value in self.args.items()]
         dep_strings = ["{}={}".format(arg, var) for arg, var in self.dependencies.items()]
 
-        return "{}({})".format(self.op, ",".join(arg_strings + dep_strings))
+        return "{}({})".format(self.op, ", ".join(arg_strings + dep_strings))
 
 
 @attr.s
@@ -115,7 +111,12 @@ class Op(ABC):
 
     Additional requirements can be introduced for variable arguments, globally or individually, by redefining the :meth:`_arg_requirements` method
     appropriately.
+
+    Attributes:
+        thread_safe: If False, the op is always executed in the main thread. Defaults to True.
     """
+    thread_safe = attr.ib(type=bool, default=True)
+
     def __repr__(self):
         return type(self).__name__
 
@@ -145,6 +146,8 @@ class Op(ABC):
         if len(args) > 0:
             raise RuntimeError("Positional arguments are not supported in computational graphs, use keyword arguments only.")
 
+        kwargs = {arg: value.result() if isinstance(value, Future) else value for arg, value in kwargs.items()}
+
         var_args = {arg: var for arg, var in kwargs.items() if isinstance(var, Variable)}
 
         # The following ensures that the wrapper just returns a concrete value in absence of variable arguments
@@ -162,6 +165,11 @@ def op(func: Callable) -> Callable:
     The returned function accepts arguments of type Variable everywhere in its signature, in addition to the types accepted by the decorated function. In
     presence of such arguments, it returns a Variable object symbolizing the result of the operation with the arguments passed in. In absence of variable
     arguments, the function returned is just equivalent to the function passed in, in particular it returns a value of the pristine return type.
+
+
+    .. warning::
+        Operations returned by this decorator are marked thread-safe by default. It is the user's responsibility to set `Op.thread_safe` to `False` where
+        appropriate.
 
     Arguments:
         func: the function to transform into an Op

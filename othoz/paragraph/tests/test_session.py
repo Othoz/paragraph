@@ -1,3 +1,5 @@
+from concurrent.futures.thread import ThreadPoolExecutor
+
 import pytest
 
 from othoz.paragraph.types import Variable
@@ -12,12 +14,18 @@ def graph():
     graph.input = Variable("input")
     output0 = op1(arg=graph.input)
 
-    op2 = mock_op("op1")
-    output1 = op2(arg0=graph.input, arg1=output0)
+    op1 = mock_op("op1")
+    output1 = op1(arg0=graph.input, arg1=output0)
 
     graph.output = [output0, output1]
 
     return graph
+
+
+@pytest.fixture
+def thread_pool_executor():
+    with ThreadPoolExecutor() as executor:
+        yield executor
 
 
 class TestForwardGenerator:
@@ -38,41 +46,53 @@ class TestBackwardGenerator:
         assert items == expected
 
 
-@pytest.mark.parametrize("max_workers", [pytest.param(1, id="Single thread"),
-                                         pytest.param(50, id="Multi-threaded")])
 class TestEvaluate:
     @staticmethod
-    def test_variable_evaluation_is_correct(graph, max_workers):
-        res = evaluate(graph.output, args={graph.input: "Input value"}, max_workers=max_workers)
+    def test_sequential_evaluation_is_correct(graph):
+        res = evaluate(graph.output, args={graph.input: "input_value"})
 
-        assert res[0] == "op0 return value"
-        assert res[1] == "op1 return value"
+        assert res[0] == "op0_return_value"
+        assert res[1] == "op1_return_value"
 
-        graph.output[0].op._run.assert_called_once_with(arg="Input value")
-        graph.output[1].op._run.assert_called_once_with(arg0="Input value", arg1="op0 return value")
+        graph.output[0].op._run.assert_called_once_with(arg="input_value")
+        graph.output[1].op._run.assert_called_once_with(arg0="input_value", arg1="op0_return_value")
 
     @staticmethod
-    def test_evaluation_is_lazy(graph, max_workers):
-        res = evaluate([graph.output[0]], args={graph.input: "Input value"}, max_workers=max_workers)
+    def test_parallel_evaluation_is_correct(graph, thread_pool_executor):
+        res = evaluate(graph.output, args={graph.input: "input_value"}, executor=thread_pool_executor)
+
+        assert res[0] == "op0_return_value"
+        assert res[1] == "op1_return_value"
+
+        graph.output[0].op._run.assert_called_once_with(arg="input_value")
+        graph.output[1].op._run.assert_called_once_with(arg0="input_value", arg1="op0_return_value")
+
+    @staticmethod
+    def test_evaluation_is_lazy(graph):
+        res = evaluate([graph.output[0]], args={graph.input: "input_value"})
         operation = graph.output[1].op
 
-        assert res[0] == "op0 return value"
+        assert res[0] == "op0_return_value"
         assert not operation._run.called
 
 
-@pytest.mark.parametrize("max_workers", [pytest.param(1, id="Single thread"),
-                                         pytest.param(50, id="Multi-threaded")])
 class TestApply:
     @staticmethod
-    def test_apply_returns_correct_number_of_results(graph, max_workers):
-        res = list(apply(graph.output, args={}, iter_args=[{graph.input: "Input value"}] * 5, max_workers=max_workers))
+    def test_sequential_apply_returns_correct_number_of_results(graph):
+        res = list(apply(graph.output, args={}, iter_args=[{graph.input: "input_value"}] * 5))
 
         assert len(res) == 5
 
     @staticmethod
-    def test_apply_raises_on_overwriting_an_input_variable(graph, max_workers):
+    def test_parallel_apply_returns_correct_number_of_results(graph, thread_pool_executor):
+        res = list(apply(graph.output, args={}, iter_args=[{graph.input: "input_value"}] * 5, executor=thread_pool_executor))
+
+        assert len(res) == 5
+
+    @staticmethod
+    def test_parallel_apply_raises_on_overwriting_an_input_variable(graph, thread_pool_executor):
         with pytest.raises(ValueError):
-            list(apply(graph.output, args={graph.input: "Input value"}, iter_args=[{graph.input: "Input value"}] * 5, max_workers=max_workers))
+            list(apply(graph.output, args={graph.input: "input_value"}, iter_args=[{graph.input: "input_value"}] * 5, executor=thread_pool_executor))
 
 
 class TestRequirementSolving:
