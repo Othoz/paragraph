@@ -27,19 +27,17 @@ def thread_pool_executor():
         yield executor
 
 
-class TestEagerMode:
-    @staticmethod
-    def test_no_variable_returned():
-        with eager_mode():
-            op0 = mock_op("op0")
-            input = "input_value"
-            output0 = op0(arg=input)
-            op0._run.assert_called_once_with(arg=input)
-            assert output0 == "op0_return_value"
-            op1 = mock_op("op1")
-            output1 = op1(input, arg1=output0)
-            op1._run.assert_called_once_with(input, arg1="op0_return_value")
-            assert output1 == "op1_return_value"
+def test_no_variable_returned_in_eager_mode():
+    with eager_mode():
+        op0 = mock_op("op0")
+        input = "input_value"
+        output0 = op0(arg=input)
+        op0._run.assert_called_once_with(arg=input)
+        assert output0 == "op0_return_value"
+        op1 = mock_op("op1")
+        output1 = op1(input, arg1=output0)
+        op1._run.assert_called_once_with(input, arg1="op0_return_value")
+        assert output1 == "op1_return_value"
 
 
 class TestForwardGenerator:
