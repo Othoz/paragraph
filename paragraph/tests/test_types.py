@@ -3,7 +3,7 @@ import attr
 
 from unittest.mock import MagicMock
 
-from othoz.paragraph.types import op, Op, Variable, Requirement
+from paragraph.types import op, Op, Variable, Requirement
 
 
 @attr.s

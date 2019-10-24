@@ -2,9 +2,9 @@ import pytest
 
 from concurrent.futures.thread import ThreadPoolExecutor
 
-from othoz.paragraph.types import Variable
-from othoz.paragraph.session import eager_mode, traverse_fw, traverse_bw, evaluate, solve_requirements, apply
-from othoz.paragraph.tests.test_types import MockReq, mock_op
+from paragraph.types import Variable
+from paragraph import eager_mode, traverse_fw, traverse_bw, evaluate, solve_requirements, apply
+from paragraph.tests.test_types import MockReq, mock_op
 
 
 @pytest.fixture

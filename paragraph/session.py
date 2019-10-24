@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Generator, Iterable, Optional
 from collections import defaultdict, deque
 from contextlib import contextmanager
 
-from othoz.paragraph.types import Variable, Requirement, Op
+from paragraph.types import Variable, Requirement, Op
 
 
 @contextmanager

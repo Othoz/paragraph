@@ -1,25 +1,43 @@
-from setuptools import find_packages
+import os
 from setuptools import setup
+
+here = os.path.abspath(os.path.dirname(__file__))
+with open(os.path.join(here, "README.rst"), encoding="utf-8") as f:
+    long_description = "\n" + f.read()
 
 
 if __name__ == "__main__":
     setup(
-        name="othoz-paragraph",
-
-        # Use the default-setting from setuptools_scm to generate a version number from Git tag etc., see
-        # https://github.com/pypa/setuptools_scm
+        name="paragraph",
         use_scm_version=True,
-        setup_requires=['setuptools_scm'],
-
         author="Othoz GmbH",
-        include_package_data=False,
-        packages=find_packages(),
-        namespace_packages=[
-            "othoz"
+        author_email="bourguignon@othoz.com",
+        description="A computation graph micro-framework providing seamless lazy and concurrent evaluation.",
+        long_description=long_description,
+        long_description_content_type="text/x-rst",
+        keywords=["computation graph", "concurrent", "lazy"],
+        url="https://github.com/Othoz/paragraph",
+        project_urls={
+            "Bug Tracker": "https://github.com/Othoz/paragraph/issues",
+            "Documentation": "http://paragraph.readthedocs.io/en/latest/",
+        },
+        packages=["paragraph"],
+        license="MIT",
+        python_requires=">=3.6",
+        setup_requires=['setuptools_scm'],
+        install_requires=[
+            "attrs>=18.1.0",
         ],
-        description="A computation graph micro-framework providing seamless lazy and parallel evaluation.",
-        # By default setuptools tries to detect automagically if a package can be zipped. However,
-        # a zipped package does seem to not work well with conda - so we force setuptools to not
-        # zip the package
-        zip_safe=False
+        classifiers=[
+            "Development Status :: 4 - Beta",
+            "Intended Audience :: Developers",
+            "License :: OSI Approved :: MIT License",
+            "Operating System :: OS Independent",
+            "Programming Language :: Python",
+            "Programming Language :: Python :: 3",
+            "Programming Language :: Python :: 3.6",
+            "Programming Language :: Python :: 3.7",
+            "Programming Language :: Python :: 3.8",
+            "Programming Language :: Python :: Implementation",
+        ],
     )
