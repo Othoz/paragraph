@@ -36,7 +36,7 @@ The operation can then be applied to objects of both Variable and non-Variable t
 
 Ops differ from regular Python functions in their behavior upon receiving an argument of type Variable. In such a case, they are not executed,
 but instead pack the knowledge required for deferred execution into an instance of Variable, and return this variable.
-Then, a variable can be evaluated by invoking the function :func:`othoz.paragraph.session.evaluate` and passing in initialization values for the input
+Then, a variable can be evaluated by invoking the function `paragraph.session.evaluate` and passing in initialization values for the input
 variables alongside the target variable:
 
 >>> value = evaluate([v2], args={v1: 4})
@@ -48,7 +48,7 @@ Going further
 Partial evaluation
 ''''''''''''''''''
 
-When the arguments passed to :func:`othoz.paragraph.session.evaluate` are insufficient to resolve fully an output variable (that is, at least one transitive
+When the arguments passed to `paragraph.session.evaluate` are insufficient to resolve fully an output variable (that is, at least one transitive
 dependency of the output variable is left uninitialized), the value returned for the output variable is simply another variable. This new variable has in
 general fewer dependencies, for dependencies fully resolved upon evaluation are replaced by their values.
 
@@ -56,7 +56,7 @@ general fewer dependencies, for dependencies fully resolved upon evaluation are 
 Mapping over inputs
 '''''''''''''''''''
 
-The function :func:`othoz.paragraph.session.apply` extends :func:`othoz.paragraph.session.evaluate` to take, in addition, an iterator over input arguments to
+The function `paragraph.session.apply` extends `paragraph.session.evaluate` to take, in addition, an iterator over input arguments to
 the computation graph. It takes advantage of partial evaluation to reduce the number of operations evaluated at each iteration.
 
 
@@ -64,9 +64,9 @@ Concurrency
 '''''''''''
 
 Building upon the guarantees granted by a forward traversal, concurrent execution of ops comes at no additional cost. This feature relies on the `concurrent`
-package from the Python standard library: ops are simply submitted to an instance of :class:`concurrent.futures.Executor` for evaluation. The executor should
-be provided externally and allow calling :class:`concurrent.futures.Future` methods from a submitted callable (in particular, this excludes
-:class:`concurrent.futures.ProcessPoolExecutor`). The responsibility for shutting down the executor properly lies on the user. In absence of an executor,
+package from the Python standard library: ops are simply submitted to an instance of `concurrent.futures.Executor` for evaluation. The executor should
+be provided externally and allow calling `concurrent.futures.Future` methods from a submitted callable (in particular, this excludes
+`concurrent.futures.ProcessPoolExecutor`). The responsibility for shutting down the executor properly lies on the user. In absence of an executor,
 variables are evaluated in a sequential manner, yet still lazily.
 
 Should an operation be executed in the main process, it can be marked as such by setting the attribute `Op.thread_safe` to False.
@@ -78,18 +78,18 @@ Example usage:
 ...     res = evaluate([output], args={input: input_value}, executor=ex)
 
 .. note::
-    Argument values passed to :func:`othoz.paragraph.session.evaluate` can be of type :class:`concurrent.futures.Future`, in which case the consuming
+    Argument values passed to `paragraph.session.evaluate` can be of type `concurrent.futures.Future`, in which case the consuming
     operations will simply block until the result is available.
 
 .. note::
-    Similarly, an executor can be passed to the function :func:`othoz.paragraph.session.apply`.
+    Similarly, an executor can be passed to the function `paragraph.session.apply`.
 
 
 Eager mode
 ''''''''''
 
-Within the context manager `othoz.paragraph.session.eager_mode`, ops are executed eagerly: the underlying `_run` method is invoked directly rather than
-returning an instance of :class:`Variable`. In this mode, arguments of type `Variable` are generally not accepted. No concurrent evaluation occurs in eager
+Within the context manager `paragraph.session.eager_mode`, ops are executed eagerly: the underlying `_run` method is invoked directly rather than
+returning an instance of `Variable`. In this mode, arguments of type `Variable` are generally not accepted. No concurrent evaluation occurs in eager
 mode.
 
 This mode is particularly useful when testing or debugging a computation graph without modifying the code defining it, by simply bypassing the machinery set
