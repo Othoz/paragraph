@@ -171,24 +171,8 @@ Glossary
         the variables depending on it, directly or transitively. In this order, information can be backward propagated through the graph.
 
 
-Development Environment Setup
-=============================
-
-Running the code in the repository requires that you have set up your
-computer according to the standard Othoz development setup (conda, gcloud, …),
-see `Handbook V: Production + Development Infrastructure <https://docs.google.com/document/d/1yxAtV9DCNeiYpSIJF_iChZKd60XdGQfoKV6GiY07wJM/edit#heading=h.7z9b4drr2v0u>`_.
-
-
 Contribution guidelines
 =======================
 
-* Writing tests: All code is tested via unittests. Write additional integration tests if necessary
-* Code review: Use Bitbucket pull-requests to submit changes to this repository.
-
-
-Whom do I talk to?
-==================
-
-* Preferably use Slack to talk to bourguignon@othoz.com, richter@othoz.com or eitz@othoz.com
-* Repo owner or admin: bourguignon@othoz.com
+Pull-requests are welcome.
 
