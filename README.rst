@@ -1,5 +1,18 @@
-Overview
-========
+Paragraph
+=========
+
+.. image:: https://img.shields.io/pypi/v/paragraph.svg
+    :target: https://pypi.org/project/paragraph/
+
+.. image:: https://img.shields.io/pypi/pyversions/paragraph.svg
+    :target: https://pypi.org/project/paragraph/
+
+.. image:: https://travis-ci.org/Othoz/paragraph.svg?branch=master
+    :target: https://travis-ci.org/Othoz/paragraph
+
+.. image:: https://readthedocs.org/projects/paragraph/badge/?version=latest
+    :target: https://paragraph.readthedocs.io/en/latest/?badge=latest
+
 
 othoz-paragraph is a pure Python micro-framework supporting seamless lazy and concurrent evaluation of computation graphs.
 

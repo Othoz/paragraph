@@ -3,7 +3,7 @@ import pytest
 from concurrent.futures.thread import ThreadPoolExecutor
 
 from paragraph.types import Variable
-from paragraph import eager_mode, traverse_fw, traverse_bw, evaluate, solve_requirements, apply
+from paragraph.session import eager_mode, traverse_fw, traverse_bw, evaluate, solve_requirements, apply
 from paragraph.tests.test_types import MockReq, mock_op
 
 
