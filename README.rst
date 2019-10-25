@@ -19,8 +19,8 @@ Paragraph is a pure Python micro-framework supporting seamless lazy and concurre
 In essence, the package allows to write *functional* code directly in Python: statements merely specify relationships among *variables* through *operations*.
 Evaluation of any variable given the values of other variables is then de facto:
 
-  - **lazy**: only operations participating in the determination of the requested value are executed,
-  - **concurrent**: operations can be executed by a thread pool of arbitrary size.
+- **lazy**: only operations participating in the determination of the requested value are executed,
+- **concurrent**: operations can be executed by a thread pool of arbitrary size.
 
 In addition, relationships among variables can be traversed in both directions, allowing a form of backpropagation of
 information through the computation network that would be cumbersome to implement in an imperative manner.
