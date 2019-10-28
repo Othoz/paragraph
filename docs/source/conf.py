@@ -41,11 +41,12 @@ release = ''
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.coverage',
-    'sphinx.ext.napoleon',  # must be loaded before 'sphinx_autodoc_typehints' according to https://github.com/agronholm/sphinx-autodoc-typehints
-    'sphinx_autodoc_typehints',
-    'sphinx.ext.mathjax'
-    # 'sphinx.ext.viewcode'  # while being hosted on an external provider we don't want to push all our source code over to them
+    # Typehints are currently deactivated as this would require to maintain a separate requirements.txt for readthedocs.
+    # readthedocs will most likely support Pipfiles in the future, then we can reactivate this feature
+    # https://github.com/readthedocs/readthedocs.org/issues/3181
+    # 'sphinx.ext.napoleon',  # must be loaded before 'sphinx_autodoc_typehints' according to https://github.com/agronholm/sphinx-autodoc-typehints
+    # 'sphinx_autodoc_typehints',
+    # 'sphinx.ext.mathjax'
 ]
 
 # Add any paths that contain templates here, relative to this directory.

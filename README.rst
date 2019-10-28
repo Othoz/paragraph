@@ -1,6 +1,8 @@
 Paragraph
 =========
 
+A pure Python micro-framework supporting seamless lazy and concurrent evaluation of computation graphs.
+
 .. image:: https://img.shields.io/pypi/v/paragraph.svg
     :target: https://pypi.org/project/paragraph/
 
@@ -13,8 +15,12 @@ Paragraph
 .. image:: https://readthedocs.org/projects/paragraph/badge/?version=latest
     :target: https://paragraph.readthedocs.io/en/latest/?badge=latest
 
+.. image:: https://api.codacy.com/project/badge/Coverage/ab1bc36d3b4f44ea9d88b9e608f39aba
+    :target: https://www.codacy.com/manual/Othoz/paragraph?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Othoz/paragraph&amp;utm_campaign=Badge_Coverage
 
-Paragraph is a pure Python micro-framework supporting seamless lazy and concurrent evaluation of computation graphs.
+.. image:: https://api.codacy.com/project/badge/Grade/ab1bc36d3b4f44ea9d88b9e608f39aba
+    :target: https://www.codacy.com/manual/Othoz/paragraph?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Othoz/paragraph&amp;utm_campaign=Badge_Grade
+
 
 In essence, the package allows to write *functional* code directly in Python: statements merely specify relationships among *variables* through *operations*.
 Evaluation of any variable given the values of other variables is then de facto:

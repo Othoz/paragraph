@@ -10,7 +10,7 @@ install:
 
 script:
   - flake8
-  - pytest --cov=fs_gcsfs --cov-branch --cov-report=xml
+  - pytest --cov=paragraph --cov-branch --cov-report=xml
 
 deploy:
   provider: pypi
