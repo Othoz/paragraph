@@ -3,7 +3,7 @@ import attr
 
 from concurrent.futures import Future
 from itertools import chain
-from typing import Callable, Dict, Optional, Tuple, List, Any
+from typing import Callable, Dict, Optional, Tuple, List, Any, Iterable, Union
 from functools import wraps
 from abc import ABC, abstractmethod
 
@@ -126,8 +126,14 @@ class Op(ABC):
 
         This method extracts `args` entries with a key of type integer, and collates them into a list
         """
+        args = args.copy()
         pos_args = [args.pop(k) for k in sorted(filter(lambda x: isinstance(x, int), args))]
         return pos_args, args
+
+    @staticmethod
+    def _collect_args(args: Iterable[Any], kwargs: Dict[str, Any]) -> Dict[Union[int, str], Any]:
+        """Awaits all arguments and store them in a dictionary, using the index as a key for positional arguments."""
+        return {arg: value.result() if isinstance(value, Future) else value for arg, value in chain(enumerate(args), kwargs.items())}
 
     @abstractmethod
     def _run(self, *args, **kwargs):
@@ -152,7 +158,7 @@ class Op(ABC):
 
     def __call__(self, *args, **kwargs):
         """Wraps an instance method to work within the computational graph"""
-        all_args = {arg: value.result() if isinstance(value, Future) else value for arg, value in chain(enumerate(args), kwargs.items())}
+        all_args = self._collect_args(args, kwargs)
         var_args = {arg: var for arg, var in all_args.items() if isinstance(var, Variable)}
 
         # The following ensures that the wrapper just returns a concrete value in absence of variable arguments
