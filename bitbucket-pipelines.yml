@@ -29,7 +29,6 @@ pipelines:
           # The list of files at the end are excluded (external files, we don't want them in the documentation)
           - sphinx-apidoc --force --separate -o docs/source/apidoc . setup.py conftest.py "*/tests/*" "integration_tests/*"
           - make --directory docs html
-          - aws s3 sync docs/build/html/ s3://docs.othoz.com/docs/othoz-paragraph/ --delete --dryrun
 
           # Consider the run successful only after all steps have executed and thus send coverage information as the
           # very last step in order to avoid reporting coverage info for failed runs.
