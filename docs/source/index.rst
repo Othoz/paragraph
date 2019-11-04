@@ -1,8 +1,8 @@
 .. toctree::
-   :caption: Readme
+   :caption: Documentation
    :maxdepth: 2
 
-   readme
+   docs
 
 .. toctree::
    :caption: Changelog
