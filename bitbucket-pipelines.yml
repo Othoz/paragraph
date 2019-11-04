@@ -23,7 +23,7 @@ pipelines:
 
           # Run unit tests and report coverage based on them. We produce both an XML-based coverage reported as well as a simple table printed
           # to the terminal. The XML is picked up below and sent to Codacy.
-          - pytest -m "not integration" --junit-xml=test-results/tests.xml --cov=othoz --cov-branch --cov-report=xml --cov-report=term
+          - pytest -m "not integration" --junit-xml=test-results/tests.xml --cov=paragraph --cov-branch --cov-report=xml --cov-report=term
 
           # Build documentation only to be sure that it works as expected but don't deploy. We only deploy when pushing a Git tag.
           # The list of files at the end are excluded (external files, we don't want them in the documentation)
@@ -35,76 +35,3 @@ pipelines:
           # very last step in order to avoid reporting coverage info for failed runs.
           - python-codacy-coverage -r coverage.xml
 
-  # From the Bitbucket documentation: "Pull request pipelines run in addition to any branch and default pipelines that
-  # are defined, so if the definitions overlap you may get 2 pipelines running at the same time!"
-  pull-requests:
-    '**':
-      - step:
-          name: Build & integration test
-          script:
-            # Invoke the Othoz init script, which:
-            #   - activates the Google service account for deployment and sets the project (uses env variables GCP_DEPLOYMENT_SERVICE_ACCOUNT_KEY_FILE and
-            #     GCP_PROJECT_ID from the bitbucket account)
-            #   - authenticates against Anaconda (uses env variables ANACONDA_USERNAME and ANACONDA_PASSWORD)
-            - source /usr/local/bin/othoz-init.sh
-
-            # Filter out all dev-only dependencies to reduce time required to run conda env create
-            - awk '!/#othoz:dev/' environment.yml > environment.ci.yml
-            - conda env create -f environment.ci.yml --verbose
-            - conda activate othoz-paragraph
-
-            # Run integration tests only as unit tests are already run as part of the 'default' pipeline. Integration tests are not used to compute
-            # coverage information and thus the call to pytest is extremely simple.
-            # othoz-paragraph has no integration tests and running the call below results in an exit code != 0 resulting in a pipeline failure
-            # - pytest -m integration
-
-  tags:
-    '*':
-    - step:
-        name: Build, full test & release
-        script:
-        # Invoke the Othoz init script, which:
-        #   - activates the Google service account for deployment and sets the project (uses env variables GCP_DEPLOYMENT_SERVICE_ACCOUNT_KEY_FILE and
-        #     GCP_PROJECT_ID from the bitbucket account)
-        #   - authenticates against Anaconda (uses env variables ANACONDA_USERNAME and ANACONDA_PASSWORD)
-        - source /usr/local/bin/othoz-init.sh
-
-        # Filter out all dev-only dependencies to reduce time required to run conda env create
-        - awk '!/#othoz:dev/' environment.yml > environment.ci.yml
-        - conda env create -f environment.ci.yml --verbose
-        - conda activate othoz-paragraph
-
-        - flake8
-
-        # Run all tests (unit + integration).
-        # As coverage should only be compute for unit tests we separate that into two runs
-        - pytest -m "not integration" --junit-xml=test-results/tests.xml --cov=othoz --cov-branch --cov-report=xml --cov-report=term
-        # othoz-paragraph has no integration tests and running the call below results in an exit code != 0 resulting in a pipeline failure
-        #- pytest -m integration
-
-        # Build documentation and deploy to S3
-        # The list of files at the end are excluded (external files, we don't want them in the documentation)
-        - sphinx-apidoc --force --separate -o docs/source/apidoc . setup.py conftest.py "*/tests/*" "integration_tests/*"
-        - make --directory docs html
-
-        # The deployment is done by synching the generated HTML documentation to an S3 bucket using the
-        # AWS CLI. The AWS CLI requires that AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are exposed as
-        # environment variables and give it read/write access to the s3://docs.othoz.com bucket
-        - aws s3 sync docs/build/html/ s3://docs.othoz.com/docs/othoz-paragraph/ --delete
-
-        # Build package to test if the build process works. Must add conda-forge channel
-        # because we are drawing in some dependencies from this channel
-        # Note that we need to provide the full URL to the othoz repository in order for
-        # the build to work; just providing --channel othoz causes the build to fail (effective 5 Nov 2017)
-        - export VERSION=$(python setup.py --version)
-        - echo Using package version string $VERSION
-        - conda build -c conda-forge -c https://conda.anaconda.org/othoz/ --no-include-recipe --no-anaconda-upload .
-
-        # Upload package (NOTE: use the same package influencing options, e.g. "--no-include-recipe", as in the actual build step)
-        - conda activate base
-        - anaconda upload --private --user othoz "$(conda build -c conda-forge -c https://conda.anaconda.org/othoz/ --no-include-recipe --output .)"
-
-        # Consider the run successful only after all steps have executed and thus send coverage information as the
-        # very last step in order to avoid reporting coverage info for failed runs.
-        - conda activate othoz-paragraph
-        - python-codacy-coverage -r coverage.xml
