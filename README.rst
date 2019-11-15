@@ -74,11 +74,11 @@ Transparent multithreading
 Constraints
 '''''''''''
 
-The features listed above come at some price, essentially because the order in which operations are actually executed generally differs from their order of
-invocation. For paragraph to guarantee that a variable always evaluates to the same value given the same inputs, as in a system of mathematical equations, it is
-paramount that operations **never** mutate an object they received as an argument, or store as an attribute. The evolution of the state of the object would be,
-by definition, out of the control of the programmer. There is close to nothing paragraph can do to prevent such a thing happening. When in doubt, make sure to
-operate on a copy of the argument.
+The features listed above come at some price, essentially because the order in which operations are actually executed generally differs from the order of
+their invocations. For paragraph to guarantee that a variable always evaluates to the same value given the same inputs, as in a system of mathematical
+equations, it is paramount that operations **never** mutate an object they received as an argument, or store as an attribute. The evolution of the state of
+the object would be, by definition, out of the control of the programmer. There is close to nothing paragraph can do to prevent such a thing happening. When
+in doubt, make sure to operate on a copy of the argument.
 
 
 Typing
