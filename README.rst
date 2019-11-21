@@ -25,7 +25,7 @@ A pure Python micro-framework supporting seamless lazy and concurrent evaluation
 Introduction
 ''''''''''''
 
-Paragraph is a minimal layer on top of Python to write *functional* code as transparently as possible. One additional class, ``Variable``, and a
+Paragraph adds the *functional programming paradigm* to Python in a minimal and almost seamless fashion. One additional class, ``Variable``, and a
 function decorator, ``op``, is all it takes to turn a block of regular Python code into a *computation graph*, i.e. a computer representation of a system of
 equations:
 
@@ -33,11 +33,11 @@ equations:
 >>> import operator
 >>> x, y = pg.Variable("x"), pg.Variable("y")
 >>> add = pg.op(operator.add())
->>> s = plus(x, y)
+>>> s = add(x, y)
 
 
-The few lines above fully instantiate a computation graph, here in its simplest form with just one equation relating ``x``, ``y`` and ``z`` via the function
-``plus``. Given values for the input variables ``x`` and ``y``, the value of ``z`` is resolved as follows:
+The few lines above fully instantiate a computation graph, here in its simplest form with just one equation relating ``x``, ``y`` and ``s`` via the function
+``add``. Given values for the input variables ``x`` and ``y``, the value of ``s`` is resolved as follows:
 
 >>> pg.evaluate([s], {x: 5, y: 10})
 [15]
@@ -60,20 +60,23 @@ Lazy evaluation
   >>> evaluate([t], {y: 10, z: 50})
   [60]
 
-  just ignores the variables ``s`` and ``x`` altogether, since they do not contribute to the evaluation of ``t``.
+  just ignores the variables ``s`` and ``x`` altogether, since they do not contribute to the evaluation of ``t``. In particular, the operation ``add(x, y)``
+  is not executed.
 
 
 Eager currying
-  Invoking an op with invariable arguments (that is, arguments that are not of type ``Variable``), an op will just return an invariable value: evaluation is
-  eager whenever possible. If at least one of the inputs is a variable, say ``t``, ``evaluate`` returns a new variable:
+  Invoking an op with invariable arguments (that is, arguments that are not of type ``Variable``) just returns an invariable value: evaluation is
+  eager whenever possible. If at least one of the inputs is a variable, say ``x_p``, ``evaluate`` returns a new variable:
   
-  >>> xx = Variable("xx")
+  >>> x_p = Variable("x_p")
   >>> u = add(s, t)
-  >>> u_xx = pg.evaluate([u], {x: xx, y: 10, z: 50})
+  >>> u_xp = pg.evaluate([u], {x: x_p, y: 10, z: 50})
   
-  Here, ``u_xx`` is a different variable from ``u``: it depends on a single input variable (``xx``), and it knows nothing about a variable ``y`` or ``z``,
-  instead storing a reference to the value of ``t``, i.e. ``60``. Thus, ``pg.session.evaluate`` acts much as ``functools.partial``, except it simplifies the
-  system of equations where possible by executing dependent operations whose arguments are invariable.
+  Here, ``u_xp`` is a different variable from ``u``: it depends on a single input variable (``x_p``), and it knows nothing about a variable ``y`` or ``z``,
+  instead storing a reference to the value of their sum ``t``, i.e. ``60``.
+
+  Thus, ``pg.session.evaluate`` acts much as ``functools.partial``, except it simplifies the system of equations where possible by executing dependent
+  operations whose arguments are invariable.
 
 Transparent multithreading
   Invoking ``evaluate`` with an instance of ``concurrent.ThreadPoolExecutor`` will allow independent blocks of the computation graph to run in separate threads:
@@ -87,18 +90,30 @@ Transparent multithreading
 Constraints
 '''''''''''
 
+Side-effects
+------------
+
 The features listed above come at some price, essentially because the order in which operations are actually executed generally differs from the order of
 their invocations. For paragraph to guarantee that a variable always evaluates to the same value given the same inputs, as in a system of mathematical
-equations, it is paramount that operations **never** mutate an object they received as an argument, or store as an attribute. The state sequence of
-the object would be, by definition, out of the control of the programmer. There is close to nothing paragraph can do to prevent such a thing happening. When
-in doubt, make sure to operate on a copy of the argument.
+equations, it is paramount that operations remain free of side-effects, i.e. they **never** mutate an object they received as an argument, or store as an
+attribute. The state sequence of the object would be, by definition, out of the control of the programmer.
 
+There is close to nothing paragraph can do to prevent such a thing happening. When in doubt, make sure to operate on a copy of the argument.
 
 Typing
-''''''
+------
 
-Variables make strictly no assumption about the type of their value. However, an op retains the annotations of the underlying function so that types should be
-correctly hinted when invoking ops to define variables. The same goes for type checkers.
+Variables do not carry any information regarding the type of the value they represent, which precludes binding a method of the underlying value to an
+instance of ``Variable``: such instructions can appear only within the code of an op. Since binary operators are implemented using special methods in
+Python, this also precludes such statements as:
+
+>>> s = x + y
+
+for this would be resolved by the Python interpreter into ``s = x.__add__(y)``, then ``s = y.__radd__(x)``, yet none of these methods is defined by
+``Variable``.
+
+Nonetheless, an op retains the annotations of the underlying function so that types should be correctly hinted when invoking ops to define variables. The
+same goes for type checkers.
 
 
 For more information please consult the `documentation <http://paragraph.readthedocs.io>`_.
