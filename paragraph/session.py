@@ -158,7 +158,7 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
             if var in args:
                 raise ValueError("An initialization value for variable {} is provided in `iter_args` and in `args`."
                                  "Proceeding further could result in an inconsistent evaluation.".format(var))
-        iter_values = dict(zip(unresolved_output_vars, evaluate(unresolved_output_vars, args=args, executor=executor)))
+        iter_values = dict(zip(unresolved_output_vars, evaluate(unresolved_output_vars, args=arg_dict, executor=executor)))
         yield [partial_values[var] if not isinstance(partial_values[var], Variable) else iter_values[partial_values[var]] for var in output]
 
 
