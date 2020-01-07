@@ -16,6 +16,15 @@ Possible types of changes are:
 - ``Fixed`` for any bug fixes
 - ``Security`` in case of vulnerabilities
 
+
+1.0.1 - 07.10.2020
+------------------
+
+Fixed
+'''''
+- mistyped variable name breaks ``session.apply``
+
+
 1.0.0 - 24.10.2019
 ------------------
 
