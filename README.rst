@@ -15,10 +15,10 @@ A pure Python micro-framework supporting seamless lazy and concurrent evaluation
 .. image:: https://readthedocs.org/projects/paragraph/badge/?version=latest
     :target: https://paragraph.readthedocs.io/en/latest/?badge=latest
 
-.. image:: https://api.codacy.com/project/badge/Coverage/ab1bc36d3b4f44ea9d88b9e608f39aba
+.. image:: https://api.codacy.com/project/badge/Coverage/9797bcf310104a38ab46098d366d9606
     :target: https://www.codacy.com/manual/Othoz/paragraph?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Othoz/paragraph&amp;utm_campaign=Badge_Coverage
 
-.. image:: https://api.codacy.com/project/badge/Grade/ab1bc36d3b4f44ea9d88b9e608f39aba
+.. image:: https://api.codacy.com/project/badge/Grade/9797bcf310104a38ab46098d366d9606
     :target: https://www.codacy.com/manual/Othoz/paragraph?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Othoz/paragraph&amp;utm_campaign=Badge_Grade
 
 
