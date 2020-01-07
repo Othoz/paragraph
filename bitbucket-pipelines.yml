@@ -1,0 +1,36 @@
+image:
+  name: eu.gcr.io/lofty-seer-161814/othoz-docker-base:1.0.1
+  username: _json_key
+  password: $GCP_DEPLOYMENT_SERVICE_ACCOUNT_KEY_FILE
+pipelines:
+  default:
+    - step:
+        name: Build & unit test
+        script:
+          # Invoke the Othoz init script, which:
+          #   - activates the Google service account for deployment and sets the project (uses env variables GCP_DEPLOYMENT_SERVICE_ACCOUNT_KEY_FILE and
+          #     GCP_PROJECT_ID from the bitbucket account)
+          #   - authenticates against Anaconda (uses env variables ANACONDA_USERNAME and ANACONDA_PASSWORD)
+          - source /usr/local/bin/othoz-init.sh
+
+          # Create conda environment for the project
+          # Filter out all dev-only dependencies to reduce time required to run conda env create
+          - awk '!/#othoz:dev/' environment.yml > environment.ci.yml
+          - conda env create -f environment.ci.yml --verbose
+          - conda activate othoz-paragraph
+
+          - flake8
+
+          # Run unit tests and report coverage based on them. We produce both an XML-based coverage reported as well as a simple table printed
+          # to the terminal. The XML is picked up below and sent to Codacy.
+          - pytest -m "not integration" --junit-xml=test-results/tests.xml --cov=paragraph --cov-branch --cov-report=xml --cov-report=term
+
+          # Build documentation only to be sure that it works as expected but don't deploy. We only deploy when pushing a Git tag.
+          # The list of files at the end are excluded (external files, we don't want them in the documentation)
+          - sphinx-apidoc --force --separate -o docs/source/apidoc . setup.py conftest.py "*/tests/*" "integration_tests/*"
+          - make --directory docs html
+
+          # Consider the run successful only after all steps have executed and thus send coverage information as the
+          # very last step in order to avoid reporting coverage info for failed runs.
+          - python-codacy-coverage -r coverage.xml
+
