@@ -26,7 +26,7 @@ Introduction
 ''''''''''''
 
 Paragraph adds the *functional programming paradigm* to Python in a minimal and almost seamless fashion. One additional class, ``Variable``, and a
-function decorator, ``op``, is all it takes to turn a block of regular Python code into a *computation graph*, i.e. a computer representation of a system of
+function decorator, ``op``, is all it takes to turn regular Python code into a *computation graph*, i.e. a computer representation of a system of
 equations:
 
 >>> import paragraph as pg
