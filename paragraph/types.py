@@ -4,7 +4,6 @@ import attr
 from concurrent.futures import Future
 from itertools import chain
 from typing import Callable, Dict, Optional, Tuple, List, Any, Iterable, Union
-from functools import wraps
 from abc import ABC, abstractmethod
 
 
@@ -68,7 +67,7 @@ class Requirement(ABC):
 
     assuming `DateRangeRequirement` and `DatasetContentsRequirement` derive from the present class.
     """
-
+    @abstractmethod
     def merge(self, other):
         """Merges `other` into `self` in-place, must be implemented by all cooperating mixin classes.
 
@@ -93,7 +92,6 @@ class Requirement(ABC):
         Arguments:
             other: the requirement to merge into self, must be of the same concrete type as `self`.
         """
-        pass
 
     def new(self):
         """Return an empty requirement of the same type as self."""
@@ -101,8 +99,8 @@ class Requirement(ABC):
 
 
 @attr.s(repr=False)
-class Op(ABC):
-    """Abstract base class for computation graph operations.
+class Op:
+    """Class of all computation graph operations.
 
     A concrete Op class should redefine the :meth:`_run` method, which fully specifies its behavior. Calling an Operation instance results in the following:
 
@@ -118,7 +116,13 @@ class Op(ABC):
     thread_safe = attr.ib(type=bool, default=True)
 
     def __repr__(self):
-        return type(self).__name__
+        """Return the operation name
+
+        The string returned by this method appears in the text representation of dependent variables.
+
+        The default implementation below simply returns the name of the ``_run`` method, and should be overridden in derived classes.
+        """
+        return self._run.__name__
 
     @staticmethod
     def split_args(args: Dict) -> Tuple[List[Any], Dict[str, Any]]:
@@ -135,9 +139,9 @@ class Op(ABC):
         """Awaits all arguments and store them in a dictionary, using the index as a key for positional arguments."""
         return {arg: value.result() if isinstance(value, Future) else value for arg, value in chain(enumerate(args), kwargs.items())}
 
-    @abstractmethod
     def _run(self, *args, **kwargs):
         """The function called to evaluate the operation, must be implemented by all concrete classes"""
+        pass
 
     def arg_requirements(self, req: Requirement, arg: str = None) -> Requirement:  # pylint: disable=R0201
         """Compute the requirements on the input value for argument `arg` from the requirements `req` bearing on the output variable.
@@ -178,7 +182,6 @@ def op(func: Callable) -> Callable:
     presence of such arguments, it returns a Variable object symbolizing the result of the operation with the arguments passed in. In absence of variable
     arguments, the function returned is just equivalent to the function passed in, in particular it returns a value of the pristine return type.
 
-
     .. warning::
         Operations returned by this decorator are marked thread-safe by default. It is the user's responsibility to set `Op.thread_safe` to `False` where
         appropriate.
@@ -186,11 +189,7 @@ def op(func: Callable) -> Callable:
     Arguments:
         func: the function to transform into an Op
     """
-    class Wrapper(Op):
-        def __repr__(self):
-            return func.__name__
+    op = Op()
+    op._run = func
 
-        def _run(self, *args, **kwargs):
-            return func(*args, **kwargs)
-
-    return wraps(func)(Wrapper())
+    return op
