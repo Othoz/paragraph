@@ -110,7 +110,7 @@ class TestApply:
 class TestRequirementSolving:
     @staticmethod
     def test_req_update_func_called():
-        operation = mock_op()
+        operation = mock_op("op")
 
         var = Variable("input")
         res = operation(a=1, b=var)
