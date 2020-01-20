@@ -16,7 +16,10 @@ class MockReq(Requirement):
 
 
 def mock_op(name=""):
-    return op(MagicMock(__name__=name, return_value=f"{name}_return_value"))
+    operation = op(MagicMock(__name__=name, return_value=f"{name}_return_value"))
+    operation.arg_requirements = MagicMock(return_value=MockReq("Arg requirement"))
+
+    return operation
 
 
 class TestVariable:
