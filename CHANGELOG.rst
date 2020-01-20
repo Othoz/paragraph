@@ -17,6 +17,22 @@ Possible types of changes are:
 - ``Security`` in case of vulnerabilities
 
 
+Unreleased
+----------
+
+Changed
+'''''''
+- simplify ``op`` decorator
+- simplify default implementation of ``Op.__repr__`
+  Unreleased
+  ----------
+  
+Changed
+'''''''
+- simplify ``op`` decorator
+- simplify default implementation of ``Op.__repr__``
+
+
 1.0.1 - 07.10.2020
 ------------------
 
