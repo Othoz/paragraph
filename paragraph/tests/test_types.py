@@ -16,13 +16,7 @@ class MockReq(Requirement):
 
 
 def mock_op(name=""):
-    class MockOp(Op):
-        def __repr__(self):
-            return name
-        _run = MagicMock(return_value="{}_return_value".format(name))
-        arg_requirements = MagicMock(return_value=MockReq("Arg requirement"))
-
-    return MockOp()
+    return op(MagicMock(__name__=name, return_value=f"{name}_return_value"))
 
 
 class TestVariable:
@@ -37,10 +31,18 @@ class TestVariable:
             _ = Variable()
 
     @staticmethod
-    def test_str_is_correct():
+    def test_str_is_correct_for_independent_variable():
         var = Variable("v1")
 
         assert str(var) == "v1"
+
+    @staticmethod
+    def test_str_is_correct_for_dependent_variable():
+        v1 = Variable("v1")
+        v2 = Variable("v2")
+        v3 = mock_op("op")(v1, kw1=v2)
+
+        assert str(v3) == "op(v1, kw1=v2)"
 
 
 class TestOpDecorator:

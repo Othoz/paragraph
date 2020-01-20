@@ -27,7 +27,7 @@ class Variable:
     name = attr.ib(type=Optional[str], default=None)
     op = attr.ib(default=None)
     args = attr.ib(type=Dict, factory=dict)
-    dependencies = attr.ib(factory=dict)
+    dependencies = attr.ib(type=Dict, factory=dict)
 
     @name.validator
     def _name_only_independent_variable(self, _, value):
@@ -40,10 +40,14 @@ class Variable:
         if self.name is not None:
             return self.name
 
-        arg_strings = ["{}={}".format(arg, value) for arg, value in self.args.items()]
-        dep_strings = ["{}={}".format(arg, var) for arg, var in self.dependencies.items()]
+        args = self.args.copy()
+        args.update(self.dependencies)
+        pos_args = {arg: args.pop(arg) for arg in list(args) if isinstance(arg, int)}
 
-        return "{}({})".format(self.op, ", ".join(arg_strings + dep_strings))
+        pos_arg_strings = [f"{pos_args[pos]}" for pos in sorted(pos_args)]
+        kw_arg_strings = [f"{arg}={val}" for arg, val in args.items()]
+
+        return "{}({})".format(self.op, ", ".join(pos_arg_strings + kw_arg_strings))
 
 
 @attr.s
