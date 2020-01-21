@@ -25,7 +25,7 @@ A pure Python micro-framework supporting seamless lazy and concurrent evaluation
 Introduction
 ''''''''''''
 
-Paragraph adds the *functional programming paradigm* to Python in a minimal and almost seamless fashion. One additional class, ``Variable``, and a
+Paragraph adds the *functional programming paradigm* to Python in a minimal fashion. One additional class, ``Variable``, and a
 function decorator, ``op``, is all it takes to turn regular Python code into a *computation graph*, i.e. a computer representation of a system of
 equations:
 
@@ -63,21 +63,31 @@ Lazy evaluation
   just ignores the variables ``s`` and ``x`` altogether, since they do not contribute to the evaluation of ``t``. In particular, the operation ``add(x, y)``
   is not executed.
 
-
 Eager currying
   Invoking an op with invariable arguments (that is, arguments that are not of type ``Variable``) just returns an invariable value: evaluation is
-  eager whenever possible. If only a subset of inputs is a variable, say ``x_p``, the computation graph can be simplified using ``solve``, which returns a new
-  variable:
+  eager whenever possible. If invariable arguments are provided for a subset of the input variables, the computation graph can be simplified using ``solve``,
+  which returns a new variable:
   
-  >>> x_p = Variable("x_p")
-  >>> u = add.op(s, t)
-  >>> u_xp = pg.solve([u], {x: x_p, y: 10, z: 50})[0]
+  >>> u_x = pg.solve([u], {y: 10, z: 50})[0]
   
-  Here, ``u_xp`` is a different variable from ``u``: it depends on a single input variable (``x_p``), and it knows nothing about a variable ``y`` or ``z``,
+  Here, ``u_x`` is a different variable from ``u``: it now depends on a single input variable (``x``), and it knows nothing about a variable ``y`` or ``z``,
   instead storing a reference to the value of their sum ``t``, i.e. ``60``.
 
   Thus, ``pg.session.solve`` acts much as ``functools.partial``, except it simplifies the system of equations where possible by executing dependent
   operations whose arguments are invariable.
+
+Graph composition
+  Assume a variable ``y`` depends on a number of input variables ``x_1``,..., ``x_p``, and another variable ``v`` on ``u_1``,...,``u_q`` (not necessarily
+  different), and ``v`` should be identified to ``x_p``. The following statement:
+
+  >>> y_v = pg.solve([y], args={x_p: v})[0]
+
+  returns a new variable ``y_v`` that depends on ``x_1``,..., ``x_{p-1}`` as well as on ``u_1``,..., ``u_q``, as if the two computation graphs defining ``y``
+  and ``v`` had been pieced together.
+
+  Note that the respective input variables may overlap, with the restriction that ``v`` should not depend on ``x_p`` as that would result in a circular
+  dependency. Also, additional arguments may be added to ``args`` in the statement above to set further values of the input variables ``x_1``,...,
+  ``x_{p-1}``. However, values cannot be set for ``u_1``,..., ``u_q`` here, since they are not dependencies of ``y``, but of ``y_v``.
 
 Transparent multithreading
   Invoking ``evaluate`` or ``solve`` with an instance of ``concurrent.ThreadPoolExecutor`` will allow independent blocks of the computation graph to run in
