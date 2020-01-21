@@ -22,46 +22,106 @@ A pure Python micro-framework supporting seamless lazy and concurrent evaluation
     :target: https://www.codacy.com/manual/Othoz/paragraph?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Othoz/paragraph&amp;utm_campaign=Badge_Grade
 
 
-In essence, the package allows to write *functional* code directly in Python: statements merely specify relationships among *variables* through *operations*.
-Evaluation of any variable given the values of other variables is then de facto:
+Introduction
+''''''''''''
 
-- **lazy**: only operations participating in the determination of the requested value are executed,
-- **concurrent**: operations can be executed by a thread pool of arbitrary size.
+Paragraph adds the *functional programming paradigm* to Python in a minimal fashion. One additional class, ``Variable``, and a
+function decorator, ``op``, is all it takes to turn regular Python code into a *computation graph*, i.e. a computer representation of a system of
+equations:
 
-In addition, relationships among variables can be traversed in both directions, allowing a form of backpropagation of
-information through the computation network that would be cumbersome to implement in an imperative manner.
-
-A glossary is provided below, which should clarify most concepts implemented in this module. Note that the usage of some terms may slightly differ from
-their standard definitions, reading it through before diving into the code is therefore highly recommended irrespective of the reader's familiarity with the
-topic.
-
-
-Getting started
-===============
-
-Computation graphs are `bipartite graphs <https://en.wikipedia.org/wiki/Bipartite_graph>`_, where vertices of a one type, the variables (of type
-Variable), are connected together exclusively through vertices of another type, the operations (or simply ops, of type Op).
-
-In *paragraph*, turning a regular Python function into an op is as simple as decorating it:
-
->>> @op
-... def f(a, b):
-...     return a * b
-
-The operation can then be applied to objects of both Variable and non-Variable type as follows:
-
->>> v1 = Variable("v1")
->>> v2 = f(2, v1)
-
-Ops differ from regular Python functions in their behavior upon receiving an argument of type Variable. In such a case, they are not executed,
-but instead pack the knowledge required for deferred execution into an instance of Variable, and return this variable.
-Then, a variable can be evaluated by invoking the function `paragraph.session.evaluate` and passing in initialization values for the input
-variables alongside the target variable:
-
->>> value = evaluate([v2], args={v1: 4})
+>>> import paragraph as pg
+>>> import operator
+>>> x, y = pg.Variable("x"), pg.Variable("y")
+>>> add = pg.op(operator.add)
+>>> s = add.op(x, y)
 
 
-Going further
-=============
+The few lines above fully instantiate a computation graph, here in its simplest form with just one equation relating ``x``, ``y`` and ``s`` via the function
+``add``. Given values for the input variables ``x`` and ``y``, the value of ``s`` is resolved as follows:
+
+>>> pg.evaluate([s], {x: 5, y: 10})
+[15]
+
+
+Key features
+''''''''''''
+
+The main benefits of using paragraph stem from the following features of ``pg.session.evaluate``:
+
+Lazy evaluation
+  Irrespective of the size of the computation graph, only the operations required to evaluate the output variables are executed. Consider the following
+  extension of the above graph:
+
+  >>> z = pg.Variable("z")
+  >>> t = add.op(y, z)
+
+  Then the statement:
+
+  >>> pg.evaluate([t], {y: 10, z: 50})
+  [60]
+
+  just ignores the variables ``s`` and ``x`` altogether, since they do not contribute to the evaluation of ``t``. In particular, the operation ``add(x, y)``
+  is not executed.
+
+Eager currying
+  Invoking an op with invariable arguments (that is, arguments that are not of type ``Variable``) just returns an invariable value: evaluation is
+  eager whenever possible. If invariable arguments are provided for a subset of the input variables, the computation graph can be simplified using ``solve``,
+  which returns a new variable:
+  
+  >>> u_x = pg.solve([u], {y: 10, z: 50})[0]
+  
+  Here, ``u_x`` is a different variable from ``u``: it now depends on a single input variable (``x``), and it knows nothing about a variable ``y`` or ``z``,
+  instead storing a reference to the value of their sum ``t``, i.e. ``60``.
+
+  Thus, ``pg.session.solve`` acts much as ``functools.partial``, except it simplifies the system of equations where possible by executing dependent
+  operations whose arguments are invariable.
+
+Graph composition
+  Assume a variable ``y`` depends on a number of input variables ``x_1``,..., ``x_p``, and another variable ``v`` on ``u_1``,...,``u_q`` (not necessarily
+  different), and ``v`` should be identified to ``x_p``. The following statement:
+
+  >>> y_v = pg.solve([y], args={x_p: v})[0]
+
+  returns a new variable ``y_v`` that depends on ``x_1``,..., ``x_{p-1}`` as well as on ``u_1``,..., ``u_q``, as if the two computation graphs defining ``y``
+  and ``v`` had been pieced together.
+
+  Note that the respective input variables may overlap, with the restriction that ``v`` should not depend on ``x_p`` as that would result in a circular
+  dependency. Also, additional arguments may be added to ``args`` in the statement above to set further values of the input variables ``x_1``,...,
+  ``x_{p-1}``. However, values cannot be set for ``u_1``,..., ``u_q`` here, since they are not dependencies of ``y``, but of ``y_v``.
+
+Transparent multithreading
+  Invoking ``evaluate`` or ``solve`` with an instance of ``concurrent.ThreadPoolExecutor`` will allow independent blocks of the computation graph to run in
+  separate threads:
+
+  >>> with ThreadPoolExecutor as ex:
+  ...     res = pg.evaluate([z_t], {t: 5}, ex)
+
+  This is particularly beneficial if large subsets of the graph are independent.
+
+
+Constraints
+'''''''''''
+
+Side-effects
+------------
+
+The features listed above come at some price, essentially because the order in which operations are actually executed generally differs from the order of
+their invocations. For paragraph to guarantee that a variable always evaluates to the same value given the same inputs, as in a system of mathematical
+equations, it is paramount that operations remain free of side-effects, i.e. they **never** mutate an object they received as an argument, or store as an
+attribute. The state sequence of the object would be, by definition, out of the control of the programmer.
+
+There is close to nothing paragraph can do to prevent such a thing happening. When in doubt, make sure to operate on a copy of the argument.
+
+Typing
+------
+
+Variables do not carry any information regarding the type of the value they represent, which precludes binding a method of the underlying value to an
+instance of ``Variable``: such instructions can appear only within the code of an op. Since binary operators are implemented using special methods in
+Python, this also precludes such statements as:
+
+>>> s = x + y
+
+for this would be resolved by the Python interpreter into ``s = x.__add__(y)``, then ``s = y.__radd__(x)``, yet none of these methods is defined by
+``Variable``.
 
 For more information please consult the `documentation <http://paragraph.readthedocs.io>`_.
