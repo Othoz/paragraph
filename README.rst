@@ -32,7 +32,7 @@ equations:
 >>> import paragraph as pg
 >>> import operator
 >>> x, y = pg.Variable("x"), pg.Variable("y")
->>> add = pg.op(operator.add())
+>>> add = pg.op(operator.add)
 >>> s = add.op(x, y)
 
 
