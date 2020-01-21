@@ -33,7 +33,7 @@ equations:
 >>> import operator
 >>> x, y = pg.Variable("x"), pg.Variable("y")
 >>> add = pg.op(operator.add())
->>> s = add(x, y)
+>>> s = add.op(x, y)
 
 
 The few lines above fully instantiate a computation graph, here in its simplest form with just one equation relating ``x``, ``y`` and ``s`` via the function
@@ -53,11 +53,11 @@ Lazy evaluation
   extension of the above graph:
 
   >>> z = pg.Variable("z")
-  >>> t = add(y, z)
+  >>> t = add.op(y, z)
 
   Then the statement:
 
-  >>> evaluate([t], {y: 10, z: 50})
+  >>> pg.evaluate([t], {y: 10, z: 50})
   [60]
 
   just ignores the variables ``s`` and ``x`` altogether, since they do not contribute to the evaluation of ``t``. In particular, the operation ``add(x, y)``
@@ -66,20 +66,22 @@ Lazy evaluation
 
 Eager currying
   Invoking an op with invariable arguments (that is, arguments that are not of type ``Variable``) just returns an invariable value: evaluation is
-  eager whenever possible. If at least one of the inputs is a variable, say ``x_p``, ``evaluate`` returns a new variable:
+  eager whenever possible. If only a subset of inputs is a variable, say ``x_p``, the computation graph can be simplified using ``solve``, which returns a new
+  variable:
   
   >>> x_p = Variable("x_p")
-  >>> u = add(s, t)
-  >>> u_xp = pg.evaluate([u], {x: x_p, y: 10, z: 50})
+  >>> u = add.op(s, t)
+  >>> u_xp = pg.solve([u], {x: x_p, y: 10, z: 50})[0]
   
   Here, ``u_xp`` is a different variable from ``u``: it depends on a single input variable (``x_p``), and it knows nothing about a variable ``y`` or ``z``,
   instead storing a reference to the value of their sum ``t``, i.e. ``60``.
 
-  Thus, ``pg.session.evaluate`` acts much as ``functools.partial``, except it simplifies the system of equations where possible by executing dependent
+  Thus, ``pg.session.solve`` acts much as ``functools.partial``, except it simplifies the system of equations where possible by executing dependent
   operations whose arguments are invariable.
 
 Transparent multithreading
-  Invoking ``evaluate`` with an instance of ``concurrent.ThreadPoolExecutor`` will allow independent blocks of the computation graph to run in separate threads:
+  Invoking ``evaluate`` or ``solve`` with an instance of ``concurrent.ThreadPoolExecutor`` will allow independent blocks of the computation graph to run in
+  separate threads:
 
   >>> with ThreadPoolExecutor as ex:
   ...     res = pg.evaluate([z_t], {t: 5}, ex)
@@ -111,9 +113,5 @@ Python, this also precludes such statements as:
 
 for this would be resolved by the Python interpreter into ``s = x.__add__(y)``, then ``s = y.__radd__(x)``, yet none of these methods is defined by
 ``Variable``.
-
-Nonetheless, an op retains the annotations of the underlying function so that types should be correctly hinted when invoking ops to define variables. The
-same goes for type checkers.
-
 
 For more information please consult the `documentation <http://paragraph.readthedocs.io>`_.
