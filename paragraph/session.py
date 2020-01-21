@@ -12,6 +12,11 @@ from paragraph.types import Variable, Requirement, Op
 
 @contextmanager
 def eager_mode():
+    """Activate eager mode within a context manager.
+
+    In eager mode, the method ``Op.op`` is replaced with the direct invocation of the underlying method ``Op._run``. In this mode, no variable is emitted,
+    allowing to test a computation graph without ever calling ``session.evaluate``.
+    """
     op = Op.op
     Op.op = lambda self, *a, **k: self._run(*a, **k)
     yield
