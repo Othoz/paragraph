@@ -1,5 +1,6 @@
 """Class definitions supporting the computation graph"""
 import attr
+import warnings
 
 from concurrent.futures import Future
 from itertools import chain
@@ -31,9 +32,10 @@ class Variable:
 
     @name.validator
     def _name_only_independent_variable(self, _, value):
-        if len(self.dependencies) > 0 and value is not None:
+        num_args = len(self.dependencies) + len(self.args)
+        if num_args > 0 and value is not None:
             raise ValueError("Only independent variables can be given a name.")
-        if len(self.dependencies) == 0 and value is None:
+        if num_args == 0 and value is None:
             raise ValueError("Independent variables must be given a name.")
 
     def __repr__(self):
@@ -48,6 +50,12 @@ class Variable:
         kw_arg_strings = [f"{arg}={val}" for arg, val in args.items()]
 
         return "{}({})".format(self.op, ", ".join(pos_arg_strings + kw_arg_strings))
+
+    def isinput(self) -> bool:
+        return len(self.args) + len(self.dependencies) == 0
+
+    def isdependent(self) -> bool:
+        return len(self.dependencies) > 0
 
 
 @attr.s
@@ -165,7 +173,11 @@ class Op:
         return type(req)()
 
     def __call__(self, *args, **kwargs):
-        """Wraps an instance method to work within the computational graph"""
+        """Execute the operation, first awaiting future arguments.
+
+        .. warning::
+            The support of arguments of type Variable will be dropped in version 2.0, use Op.op() below when building a graph.
+        """
         all_args = self._collect_args(args, kwargs)
         var_args = {arg: var for arg, var in all_args.items() if isinstance(var, Variable)}
 
@@ -174,12 +186,29 @@ class Op:
             pos_args, kw_args = Op.split_args(all_args)
             return self._run(*pos_args, **kw_args)
 
+        # The code below is scheduled for deletion
+        warnings.warn("Direct invocation of an Op instance with arguments of type Variable is deprecated and scheduled for removal in version 2.0."
+                      "Use Op.op() instead.",
+                      DeprecationWarning)
+
+        static_args = {arg: val for arg, val in all_args.items() if not isinstance(val, Variable)}
+        return Variable(op=self, args=static_args, dependencies=var_args)
+
+    def op(self, *args, **kwargs) -> Variable:
+        """Define a variable as the result of applying the op to the arguments provided.
+
+        While this method always returns a Variable instance, it accepts:
+          - _concrete_ arguments of the type expected by ``_run`` at the same position/for the same keyword,
+          - Variable instances that resolve to a value of the expected type.
+        """
+        all_args = self._collect_args(args, kwargs)
+        var_args = {arg: var for arg, var in all_args.items() if isinstance(var, Variable)}
         static_args = {arg: val for arg, val in all_args.items() if not isinstance(val, Variable)}
 
         return Variable(op=self, args=static_args, dependencies=var_args)
 
 
-def op(func: Callable) -> Callable:
+def op(func: Callable) -> Op:
     """Wraps a function within an Op object.
 
     The returned function accepts arguments of type Variable everywhere in its signature, in addition to the types accepted by the decorated function. In

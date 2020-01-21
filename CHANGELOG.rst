@@ -20,17 +20,19 @@ Possible types of changes are:
 Unreleased
 ----------
 
-Changed
-'''''''
-- simplify ``op`` decorator
-- simplify default implementation of ``Op.__repr__`
-  Unreleased
-  ----------
-  
+Deprecated
+''''''''''
+- support for unresolved output variables in ``session.evaluate``, use ``sessions.solve`` for that purpose
+- support for arguments of type Variable in ``Op.__call__``, use ``Op.op`` instead
+
 Changed
 '''''''
 - simplify ``op`` decorator
 - simplify default implementation of ``Op.__repr__``
+
+Added
+'''''
+- method ``Op.op`` to be used in place of direct invocation of an Op instance when building a graph
 
 
 1.0.1 - 07.10.2020
