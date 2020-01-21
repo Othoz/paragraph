@@ -8,9 +8,6 @@ from typing import Callable, Dict, Optional, Tuple, List, Any, Iterable, Union, 
 from abc import ABC, abstractmethod
 
 
-T = TypeVar("T")
-
-
 @attr.s(eq=False, repr=False, frozen=True)
 class Variable:
     """A generic :term:`variable`.
