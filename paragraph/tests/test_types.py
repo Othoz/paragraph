@@ -3,7 +3,7 @@ import attr
 
 from unittest.mock import MagicMock
 
-from paragraph.types import op, Variable, Requirement
+from paragraph.types import Op, op, Variable, Requirement
 
 
 @attr.s
@@ -15,7 +15,7 @@ class MockReq(Requirement):
         super().merge(other)
 
 
-def mock_op(name=""):
+def mock_op(name="") -> Op:
     operation = op(MagicMock(__name__=name, return_value=f"{name}_return_value"))
     operation.arg_requirements = MagicMock(return_value=MockReq("Arg requirement"))
 
@@ -43,9 +43,23 @@ class TestVariable:
     def test_str_is_correct_for_dependent_variable():
         v1 = Variable("v1")
         v2 = Variable("v2")
-        v3 = mock_op("op")(v1, kw1=v2)
+        v3 = mock_op("op").op(v1, kw1=v2)
 
         assert str(v3) == "op(v1, kw1=v2)"
+
+    @staticmethod
+    def test_is_input_correct_for_independent_variable():
+        v1 = Variable("v1")
+        assert v1.isinput()
+
+    @staticmethod
+    def test_is_input_correct_for_dependent_variable():
+        v1 = Variable("v1")
+        op = mock_op("op")
+        v2 = op.op(v1)
+        assert not v2.isinput()
+        v2 = op.op(1)
+        assert not v2.isinput()
 
 
 class TestOpDecorator:
@@ -77,7 +91,7 @@ class TestOpDecorator:
         mocked_op = op(mocked_function)
         variable = Variable(name="input")
 
-        result = mocked_op(arg=variable)
+        result = mocked_op.op(arg=variable)
 
         assert str(result) == "function(arg=input)"
 
@@ -102,9 +116,35 @@ class TestOpClass:
         assert return_var.dependencies == {"b": input_var}
 
     @staticmethod
+    def test_invocation_warns_on_variable_argument():
+        operation = mock_op("op")
+        with pytest.deprecated_call():
+            operation(Variable("v"), 0)
+
+    @staticmethod
     def test_returned_variable_has_correct_name():
         operation = mock_op("op")
         variable = Variable(name="input")
-        result = operation(arg=variable)
+        result = operation.op(arg=variable)
 
         assert str(result) == "op(arg=input)"
+
+    @staticmethod
+    def test_invocation_warns_not_on_invariable_argument():
+        operation = mock_op("op")
+        with pytest.warns(None) as record:
+            operation(0, 0)
+
+        assert len(record) == 0
+
+    @staticmethod
+    @pytest.mark.parametrize("argument",
+                             [pytest.param(0, id="Non-variable argument"),
+                              pytest.param(Variable("v"), id="Variable argument")])
+    def test_op_method_always_returns_a_variable_instance(argument):
+        operation = mock_op("op")
+        result = operation.op(argument)
+
+        assert isinstance(result, Variable)
+
+

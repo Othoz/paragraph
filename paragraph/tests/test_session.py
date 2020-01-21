@@ -3,7 +3,7 @@ import pytest
 from concurrent.futures.thread import ThreadPoolExecutor
 
 from paragraph.types import Variable
-from paragraph.session import eager_mode, traverse_fw, traverse_bw, evaluate, solve_requirements, apply
+from paragraph.session import eager_mode, traverse_fw, traverse_bw, evaluate, solve_requirements, apply, solve
 from paragraph.tests.test_types import MockReq, mock_op
 
 
@@ -85,6 +85,55 @@ class TestEvaluate:
         operation = graph.output[1].op
 
         assert res[0] == "op0_return_value"
+        assert not operation._run.called
+
+    @staticmethod
+    def test_deprecation_if_evaluating_with_incomplete_arguments(graph):
+        with pytest.deprecated_call():
+            res = evaluate([graph.output[0]], args={})
+
+    @staticmethod
+    def test_no_deprecation_if_evaluating_with_complete_arguments(graph):
+        with pytest.warns(None) as record:
+            res = evaluate([graph.output[0]], args={graph.input: 0})
+
+        assert len(record) == 0
+
+
+class TestSolve:
+    @staticmethod
+    def test_sequential_solve_is_correct(graph):
+        res = solve(graph.output, args={graph.input: "input_value"})
+
+        assert isinstance(res[0], Variable)
+        assert res[0].args == {"arg": "input_value"}
+        assert res[0].dependencies == {}
+        assert isinstance(res[1], Variable)
+        assert res[1].args == {0: "input_value"}
+        assert res[1].dependencies == {"arg1": res[0]}
+
+        graph.output[0].op._run.assert_not_called()
+        graph.output[1].op._run.assert_not_called()
+
+    @staticmethod
+    def test_parallel_solve_is_correct(graph, thread_pool_executor):
+        res = solve(graph.output, args={graph.input: "input_value"}, executor=thread_pool_executor)
+
+        assert isinstance(res[0], Variable)
+        assert res[0].args == {"arg": "input_value"}
+        assert res[0].dependencies == {}
+        assert isinstance(res[1], Variable)
+        assert res[1].args == {0: "input_value"}
+        assert res[1].dependencies == {"arg1": res[0]}
+
+        graph.output[0].op._run.assert_not_called()
+        graph.output[1].op._run.assert_not_called()
+
+    @staticmethod
+    def test_solve_is_lazy(graph):
+        res = evaluate([graph.output[0]], args={graph.input: "input_value"})
+        operation = graph.output[1].op
+
         assert not operation._run.called
 
 
