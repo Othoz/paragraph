@@ -3,7 +3,7 @@ import warnings
 
 from concurrent.futures import Executor, Future
 from itertools import filterfalse
-from typing import Dict, Any, List, Generator, Iterable, Optional
+from typing import Dict, Any, List, Generator, Iterable, Optional, Tuple
 from collections import defaultdict, deque
 from contextlib import contextmanager
 
@@ -12,6 +12,11 @@ from paragraph.types import Variable, Requirement, Op
 
 @contextmanager
 def eager_mode():
+    """Activate eager mode within a context manager.
+
+    In eager mode, the method ``Op.op`` is replaced with the direct invocation of the underlying method ``Op._run``. In this mode, no variable is emitted,
+    allowing to test a computation graph without ever calling ``session.evaluate``.
+    """
     op = Op.op
     Op.op = lambda self, *a, **k: self._run(*a, **k)
     yield
@@ -72,7 +77,7 @@ def _count_usages(output: Iterable[Variable]) -> Dict[Variable, int]:
     return usage_counts
 
 
-def _get_arguments(var: Variable, cache: Dict[Variable, Any], usage_counts: Dict[Variable, int], output):
+def _get_arguments(var: Variable, cache: Dict[Variable, Any], usage_counts: Dict[Variable, int], output) -> Tuple[List, Dict]:
     arguments = {}
     for arg, dep in var.dependencies.items():
         usage_counts[dep] -= 1
