@@ -4,7 +4,7 @@ import warnings
 
 from concurrent.futures import Future
 from itertools import chain
-from typing import Callable, Dict, Optional, Tuple, List, Any, Iterable, Union, TypeVar
+from typing import Callable, Dict, Optional, Tuple, List, Any, Iterable, Union
 from abc import ABC, abstractmethod
 
 
