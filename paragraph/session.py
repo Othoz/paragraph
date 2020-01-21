@@ -1,4 +1,5 @@
 """Algorithms for traversing and evaluating a computation graph."""
+import warnings
 
 from concurrent.futures import Executor, Future
 from itertools import filterfalse
@@ -11,10 +12,10 @@ from paragraph.types import Variable, Requirement, Op
 
 @contextmanager
 def eager_mode():
-    call = Op.__call__
-    Op.__call__ = lambda self, *a, **k: self._run(*a, **k)
+    op = Op.op
+    Op.op = lambda self, *a, **k: self._run(*a, **k)
     yield
-    Op.__call__ = call
+    Op.op = op
 
 
 def traverse_fw(output: Iterable[Variable]) -> Generator[Variable, None, None]:  # noqa: C901
@@ -71,14 +72,29 @@ def _count_usages(output: Iterable[Variable]) -> Dict[Variable, int]:
     return usage_counts
 
 
+def _get_arguments(var: Variable, cache: Dict[Variable, Any], usage_counts: Dict[Variable, int], output):
+    arguments = {}
+    for arg, dep in var.dependencies.items():
+        usage_counts[dep] -= 1
+        if usage_counts[dep] == 0 and dep not in output:
+            value = cache.pop(dep)
+        else:
+            value = cache[dep]
+        arguments[arg] = value
+
+    arguments.update(var.args)
+    return Op.split_args(arguments)
+
+
 def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], executor: Optional[Executor] = None) -> List:  # noqa: C901
     """Evaluate the specified output variable.
 
     The argument values provided through `args` should be:
       - of the type expected by the operations consuming the variable,
-      - of type :class:`othoz.paragraph.types.Variable`, in which case dependent output variables will evaluate to a new instance of
-        :class:`othoz.paragraph.types.Variable`,
-      - of type :class:`concurrent.futures.Future`, in which case the result will be awaited by consuming ops. The result should be of either above types.
+      - of type :class:`concurrent.futures.Future`, in which case the result will be awaited by consuming ops. The result should be of the expected type.
+
+    Support of arguments values of type Variable will be dropped in version 2.0 and a DeprecationWarning will be issued. The same applies if any input
+    variable required to evaluate the output is left uninitialized.
 
     Arguments:
       output: The variables to evaluate.
@@ -89,10 +105,10 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], executor: Op
       A list of values of the same size as `output`. The entry at index `i` is the computed value of `output[i]`.
 
     Raises:
-      ValueError: If a variable in `args` has dependencies. In this case, the consistency of the results cannot be guaranteed.
+      ValueError: If a variable in `args` is not an input variable. In this case, the consistency of the results cannot be guaranteed.
     """
     for var in args:
-        if len(var.dependencies) > 0:
+        if not var.isinput():
             raise ValueError("An initialization value is provided for variable {}, but it has dependencies."
                              "Proceeding further could result in an inconsistent evaluation.".format(var))
     cache = args.copy()
@@ -104,22 +120,14 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], executor: Op
         if var in cache:
             continue
 
-        if len(var.dependencies) == 0:
+        if var.isinput():
+            warnings.warn(f"Variable {var} is uninitialized, some output variables will not be evaluated."
+                          f"This functionality will be dropped in version 2.0, use ``session.solve`` instead.",
+                          DeprecationWarning)
             cache[var] = var
             continue
 
-        arguments = {}
-
-        for arg, dep in var.dependencies.items():
-            usage_counts[dep] -= 1
-            if usage_counts[dep] == 0 and dep not in output:
-                value = cache.pop(dep)
-            else:
-                value = cache[dep]
-            arguments[arg] = value
-
-        arguments.update(var.args)
-        pos_args, kw_args = Op.split_args(arguments)
+        pos_args, kw_args = _get_arguments(var, cache, usage_counts, output)
 
         if executor is not None and var.op.thread_safe:
             cache[var] = executor.submit(var.op, *pos_args, **kw_args)
@@ -127,6 +135,58 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], executor: Op
             cache[var] = var.op(*pos_args, **kw_args)
 
     return [cache[var].result() if isinstance(cache[var], Future) else cache[var] for var in output]
+
+
+def solve(output: Iterable[Variable], args: Dict[Variable, Any], executor: Optional[Executor] = None) -> List:  # noqa: C901
+    """Resolve the specified output variables.
+
+    The argument values provided through `args` should be:
+      - of the type expected by the operations consuming the variable,
+      - of type Variable, in which case it should evaluate to the above type,
+      - of type :class:`concurrent.futures.Future`, in which case the result will be awaited by consuming ops. The result should be of either above types.
+
+    Arguments:
+      output: The variables to evaluate.
+      args: Initialization of the input variables, none of which should have dependencies.
+      executor: An instance of concurrent.futures.Executor, to which op evaluations are submitted. If None, the default, evaluation proceeds sequentially.
+
+    Returns:
+      A list of variables of the same size as `output`. The entry at index `i` is the resolved variable for `output[i]`.
+
+    Raises:
+      ValueError: If a variable in `args` is not an input variable. In this case, the consistency of the results cannot be guaranteed.
+    """
+    for var in args:
+        if not var.isinput():
+            raise ValueError("An initialization value is provided for variable {}, but it has dependencies."
+                             "Proceeding further could result in an inconsistent evaluation.".format(var))
+    cache = args.copy()
+
+    # Discover usages so cached references can be released at earliest opportunity
+    usage_counts = _count_usages(output=output)
+
+    for var in traverse_fw(output):
+
+        if var in cache:
+            continue
+
+        if var.isinput():
+            cache[var] = var
+            continue
+
+        pos_args, kw_args = _get_arguments(var, cache, usage_counts, output)
+
+        if var.isdependent() or var in output:
+            cache[var] = var.op.op(*pos_args, **kw_args)
+            continue
+
+        # From this point on, the variable is to be evaluated
+        if executor is not None and var.op.thread_safe:
+            cache[var] = executor.submit(var.op, *pos_args, **kw_args)
+        else:
+            cache[var] = var.op(*pos_args, **kw_args)
+
+    return [cache[var] for var in output]
 
 
 def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable[Dict[Variable, Any]], executor: Optional[Executor] = None)\
@@ -150,14 +210,14 @@ def apply(output: List[Variable], args: Dict[Variable, Any], iter_args: Iterable
     Raises:
       ValueError: If a dynamic argument assigns a value to a variable appearing in static arguments, as proceeding would produce inconsistent results.
     """
-    partial_values = dict(zip(output, evaluate(output, args=args, executor=executor)))
+    partial_values = dict(zip(output, solve(output, args=args, executor=executor)))
     unresolved_output_vars = [partial_values[var] for var in output if isinstance(partial_values[var], Variable)]
 
     for arg_dict in iter_args:
         for var in arg_dict:
             if var in args:
-                raise ValueError("An initialization value for variable {} is provided in `iter_args` and in `args`."
-                                 "Proceeding further could result in an inconsistent evaluation.".format(var))
+                raise ValueError(f"An initialization value for variable {var} is provided in `iter_args` and in `args`."
+                                 f"Proceeding further could result in an inconsistent evaluation.")
         iter_values = dict(zip(unresolved_output_vars, evaluate(unresolved_output_vars, args=arg_dict, executor=executor)))
         yield [partial_values[var] if not isinstance(partial_values[var], Variable) else iter_values[partial_values[var]] for var in output]
 

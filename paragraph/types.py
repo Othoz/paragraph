@@ -1,10 +1,10 @@
 """Class definitions supporting the computation graph"""
 import attr
+import warnings
 
 from concurrent.futures import Future
 from itertools import chain
 from typing import Callable, Dict, Optional, Tuple, List, Any, Iterable, Union
-from functools import wraps
 from abc import ABC, abstractmethod
 
 
@@ -28,23 +28,34 @@ class Variable:
     name = attr.ib(type=Optional[str], default=None)
     op = attr.ib(default=None)
     args = attr.ib(type=Dict, factory=dict)
-    dependencies = attr.ib(factory=dict)
+    dependencies = attr.ib(type=Dict, factory=dict)
 
     @name.validator
     def _name_only_independent_variable(self, _, value):
-        if len(self.dependencies) > 0 and value is not None:
+        num_args = len(self.dependencies) + len(self.args)
+        if num_args > 0 and value is not None:
             raise ValueError("Only independent variables can be given a name.")
-        if len(self.dependencies) == 0 and value is None:
+        if num_args == 0 and value is None:
             raise ValueError("Independent variables must be given a name.")
 
     def __repr__(self):
         if self.name is not None:
             return self.name
 
-        arg_strings = ["{}={}".format(arg, value) for arg, value in self.args.items()]
-        dep_strings = ["{}={}".format(arg, var) for arg, var in self.dependencies.items()]
+        args = self.args.copy()
+        args.update(self.dependencies)
+        pos_args = {arg: args.pop(arg) for arg in list(args) if isinstance(arg, int)}
 
-        return "{}({})".format(self.op, ", ".join(arg_strings + dep_strings))
+        pos_arg_strings = [f"{pos_args[pos]}" for pos in sorted(pos_args)]
+        kw_arg_strings = [f"{arg}={val}" for arg, val in args.items()]
+
+        return "{}({})".format(self.op, ", ".join(pos_arg_strings + kw_arg_strings))
+
+    def isinput(self) -> bool:
+        return len(self.args) + len(self.dependencies) == 0
+
+    def isdependent(self) -> bool:
+        return len(self.dependencies) > 0
 
 
 @attr.s
@@ -68,7 +79,7 @@ class Requirement(ABC):
 
     assuming `DateRangeRequirement` and `DatasetContentsRequirement` derive from the present class.
     """
-
+    @abstractmethod
     def merge(self, other):
         """Merges `other` into `self` in-place, must be implemented by all cooperating mixin classes.
 
@@ -93,7 +104,6 @@ class Requirement(ABC):
         Arguments:
             other: the requirement to merge into self, must be of the same concrete type as `self`.
         """
-        pass
 
     def new(self):
         """Return an empty requirement of the same type as self."""
@@ -101,8 +111,8 @@ class Requirement(ABC):
 
 
 @attr.s(repr=False)
-class Op(ABC):
-    """Abstract base class for computation graph operations.
+class Op:
+    """Class of all computation graph operations.
 
     A concrete Op class should redefine the :meth:`_run` method, which fully specifies its behavior. Calling an Operation instance results in the following:
 
@@ -118,7 +128,13 @@ class Op(ABC):
     thread_safe = attr.ib(type=bool, default=True)
 
     def __repr__(self):
-        return type(self).__name__
+        """Return the operation name
+
+        The string returned by this method appears in the text representation of dependent variables.
+
+        The default implementation below simply returns the name of the ``_run`` method, and should be overridden in derived classes.
+        """
+        return self._run.__name__
 
     @staticmethod
     def split_args(args: Dict) -> Tuple[List[Any], Dict[str, Any]]:
@@ -135,9 +151,9 @@ class Op(ABC):
         """Awaits all arguments and store them in a dictionary, using the index as a key for positional arguments."""
         return {arg: value.result() if isinstance(value, Future) else value for arg, value in chain(enumerate(args), kwargs.items())}
 
-    @abstractmethod
     def _run(self, *args, **kwargs):
         """The function called to evaluate the operation, must be implemented by all concrete classes"""
+        pass
 
     def arg_requirements(self, req: Requirement, arg: str = None) -> Requirement:  # pylint: disable=R0201
         """Compute the requirements on the input value for argument `arg` from the requirements `req` bearing on the output variable.
@@ -157,7 +173,11 @@ class Op(ABC):
         return type(req)()
 
     def __call__(self, *args, **kwargs):
-        """Wraps an instance method to work within the computational graph"""
+        """Execute the operation, first awaiting future arguments.
+
+        .. warning::
+            The support of arguments of type Variable will be dropped in version 2.0, use Op.op() below when building a graph.
+        """
         all_args = self._collect_args(args, kwargs)
         var_args = {arg: var for arg, var in all_args.items() if isinstance(var, Variable)}
 
@@ -166,18 +186,34 @@ class Op(ABC):
             pos_args, kw_args = Op.split_args(all_args)
             return self._run(*pos_args, **kw_args)
 
+        # The code below is scheduled for deletion
+        warnings.warn("Direct invocation of an Op instance with arguments of type Variable is deprecated and scheduled for removal in version 2.0."
+                      "Use Op.op() instead.",
+                      DeprecationWarning)
+
+        static_args = {arg: val for arg, val in all_args.items() if not isinstance(val, Variable)}
+        return Variable(op=self, args=static_args, dependencies=var_args)
+
+    def op(self, *args, **kwargs) -> Variable:
+        """Define a variable as the result of applying the op to the arguments provided.
+
+        While this method always returns a Variable instance, it accepts:
+          - _concrete_ arguments of the type expected by ``_run`` at the same position/for the same keyword,
+          - Variable instances that resolve to a value of the expected type.
+        """
+        all_args = self._collect_args(args, kwargs)
+        var_args = {arg: var for arg, var in all_args.items() if isinstance(var, Variable)}
         static_args = {arg: val for arg, val in all_args.items() if not isinstance(val, Variable)}
 
         return Variable(op=self, args=static_args, dependencies=var_args)
 
 
-def op(func: Callable) -> Callable:
+def op(func: Callable) -> Op:
     """Wraps a function within an Op object.
 
     The returned function accepts arguments of type Variable everywhere in its signature, in addition to the types accepted by the decorated function. In
     presence of such arguments, it returns a Variable object symbolizing the result of the operation with the arguments passed in. In absence of variable
     arguments, the function returned is just equivalent to the function passed in, in particular it returns a value of the pristine return type.
-
 
     .. warning::
         Operations returned by this decorator are marked thread-safe by default. It is the user's responsibility to set `Op.thread_safe` to `False` where
@@ -186,11 +222,7 @@ def op(func: Callable) -> Callable:
     Arguments:
         func: the function to transform into an Op
     """
-    class Wrapper(Op):
-        def __repr__(self):
-            return func.__name__
+    op = Op()
+    op._run = func
 
-        def _run(self, *args, **kwargs):
-            return func(*args, **kwargs)
-
-    return wraps(func)(Wrapper())
+    return op
