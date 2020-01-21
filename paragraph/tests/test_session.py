@@ -131,7 +131,7 @@ class TestSolve:
 
     @staticmethod
     def test_solve_is_lazy(graph):
-        res = evaluate([graph.output[0]], args={graph.input: "input_value"})
+        _ = evaluate([graph.output[0]], args={graph.input: "input_value"})
         operation = graph.output[1].op
 
         assert not operation._run.called
