@@ -90,12 +90,12 @@ class TestEvaluate:
     @staticmethod
     def test_deprecation_if_evaluating_with_incomplete_arguments(graph):
         with pytest.deprecated_call():
-            res = evaluate([graph.output[0]], args={})
+            _ = evaluate([graph.output[0]], args={})
 
     @staticmethod
     def test_no_deprecation_if_evaluating_with_complete_arguments(graph):
         with pytest.warns(None) as record:
-            res = evaluate([graph.output[0]], args={graph.input: 0})
+            _ = evaluate([graph.output[0]], args={graph.input: 0})
 
         assert len(record) == 0
 

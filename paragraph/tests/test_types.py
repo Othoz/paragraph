@@ -146,5 +146,3 @@ class TestOpClass:
         result = operation.op(argument)
 
         assert isinstance(result, Variable)
-
-
