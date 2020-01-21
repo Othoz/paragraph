@@ -17,8 +17,8 @@ Possible types of changes are:
 - ``Security`` in case of vulnerabilities
 
 
-Unreleased
-----------
+1.1.0 - 20.01.2020
+------------------
 
 Deprecated
 ''''''''''
@@ -29,10 +29,13 @@ Changed
 '''''''
 - simplify ``op`` decorator
 - simplify default implementation of ``Op.__repr__``
+- complete rewrite of the readme
 
 Added
 '''''
 - method ``Op.op`` to be used in place of direct invocation of an Op instance when building a graph
+- the ``Variable`` class, the ``op`` decorator and the functions ``evaluate``, ``apply``, ``solve`` and ``solve_requirements`` are now exposed at package
+  level.
 
 
 1.0.1 - 07.10.2020
