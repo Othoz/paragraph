@@ -51,10 +51,10 @@ class Variable:
 
         return "{}({})".format(self.op, ", ".join(pos_arg_strings + kw_arg_strings))
 
-    def isinput(self):
+    def isinput(self) -> bool:
         return len(self.args) + len(self.dependencies) == 0
 
-    def isdependent(self):
+    def isdependent(self) -> bool:
         return len(self.dependencies) > 0
 
 
@@ -208,7 +208,7 @@ class Op:
         return Variable(op=self, args=static_args, dependencies=var_args)
 
 
-def op(func: Callable) -> Callable:
+def op(func: Callable) -> Op:
     """Wraps a function within an Op object.
 
     The returned function accepts arguments of type Variable everywhere in its signature, in addition to the types accepted by the decorated function. In
