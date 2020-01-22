@@ -19,7 +19,7 @@ import sys
 
 from sphinx.ext import apidoc
 sys.path.insert(0, os.path.abspath('../../'))
-apidoc.main(['--force', '--separate', '-o', './apidoc', '../../paragraph'])
+apidoc.main(['--force', '--separate', '-o', './apidoc', '../../paragraph', '../../paragraph/tests/*'])
 
 # -- Project information -----------------------------------------------------
 
@@ -49,6 +49,7 @@ extensions = [
     # readthedocs will most likely support Pipfiles in the future, then we can reactivate this feature
     # https://github.com/readthedocs/readthedocs.org/issues/3181
     'sphinx.ext.napoleon',  # must be loaded before 'sphinx_autodoc_typehints' according to https://github.com/agronholm/sphinx-autodoc-typehints
+    'sphinx_autodoc_typehints',
     # 'sphinx.ext.mathjax'
 ]
 
