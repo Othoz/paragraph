@@ -1,4 +1,9 @@
-"""Algorithms for traversing and evaluating a computation graph."""
+"""
+Session
+*******
+
+*Algorithms for traversing, solving and evaluating computation graphs*
+"""
 import warnings
 
 from concurrent.futures import Executor, Future

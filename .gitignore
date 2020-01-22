@@ -21,3 +21,4 @@ dist
 
 # Keeping Pipfile.lock out of version control as multiple versions of Python are being targeted
 Pipfile.lock
+

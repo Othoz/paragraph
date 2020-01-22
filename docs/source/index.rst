@@ -7,8 +7,9 @@
 .. toctree::
    :caption: API Reference
    :maxdepth: 3
+   :glob:
 
-   apidoc/modules
+   apidoc/*
 
 .. toctree::
    :caption: Changelog

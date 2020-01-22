@@ -19,7 +19,7 @@ import sys
 
 from sphinx.ext import apidoc
 sys.path.insert(0, os.path.abspath('../../'))
-apidoc.main(['--force', '--separate', '-o', './apidoc', '../../paragraph', '../../paragraph/tests/*'])
+apidoc.main(['--force', '-M', '-e', '-E', '-T', '-o', './apidoc', '../../paragraph', '../../paragraph/tests/*'])
 
 # -- Project information -----------------------------------------------------
 
@@ -75,7 +75,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = []
+exclude_patterns = ["apidoc/paragraph.rst"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
