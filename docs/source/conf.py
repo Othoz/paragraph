@@ -14,12 +14,16 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../'))
 
+# -- Apidoc ------------------------------------------------------------------
+
+from sphinx.ext import apidoc
+sys.path.insert(0, os.path.abspath('../../'))
+apidoc.main(['--force', '--separate', '-o', './apidoc', '../../paragraph'])
 
 # -- Project information -----------------------------------------------------
 
-project = 'othoz-paragraph'
+project = 'paragraph'
 copyright = '2019, Othoz GmbH'
 author = 'Othoz GmbH'
 
@@ -44,8 +48,7 @@ extensions = [
     # Typehints are currently deactivated as this would require to maintain a separate requirements.txt for readthedocs.
     # readthedocs will most likely support Pipfiles in the future, then we can reactivate this feature
     # https://github.com/readthedocs/readthedocs.org/issues/3181
-    # 'sphinx.ext.napoleon',  # must be loaded before 'sphinx_autodoc_typehints' according to https://github.com/agronholm/sphinx-autodoc-typehints
-    # 'sphinx_autodoc_typehints',
+    'sphinx.ext.napoleon',  # must be loaded before 'sphinx_autodoc_typehints' according to https://github.com/agronholm/sphinx-autodoc-typehints
     # 'sphinx.ext.mathjax'
 ]
 
@@ -123,7 +126,7 @@ html_theme_options = {
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'othoz-paragraphdoc'
+htmlhelp_basename = 'paragraphdoc'
 
 # -- Extension configuration -------------------------------------------------
 

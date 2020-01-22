@@ -5,17 +5,18 @@
    docs
 
 .. toctree::
+   :caption: API Reference
+   :maxdepth: 3
+
+   apidoc/modules
+
+.. toctree::
    :caption: Changelog
    :maxdepth: 1
 
    changelog
 
-.. toctree::
-   :caption: API Documentation
-   :maxdepth: 3
-
-   apidoc/modules
-
+.
 Indices and tables
 ==================
 
