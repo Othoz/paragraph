@@ -11,6 +11,10 @@ When the arguments passed to `paragraph.session.evaluate` are insufficient to re
 dependency of the output variable is left uninitialized), the value returned for the output variable is simply another variable. This new variable has in
 general fewer dependencies, for dependencies fully resolved upon evaluation are replaced by their values.
 
+.. note::
+  The ambiguity on the type returned by ``paragraph.session.evaluate`` will be lifted in version 2.0. From there on, ``paragraph.session.evaluate`` will raise
+  in situations such as described above. The support for partial evaluation will however be continued using the new function ``paragraph.session.solve``.
+
 
 Mapping over inputs
 '''''''''''''''''''

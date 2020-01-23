@@ -1,4 +1,9 @@
-"""Class definitions supporting the computation graph"""
+"""
+Classes and decorator
+*********************
+
+*Class definitions supporting the computation graphs.*
+"""
 import attr
 import warnings
 
