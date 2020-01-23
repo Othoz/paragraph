@@ -17,6 +17,14 @@ Possible types of changes are:
 - ``Security`` in case of vulnerabilities
 
 
+1.1.1 - 23.01.2020
+------------------
+
+Fixed
+'''''
+- the API doc is now included
+
+
 1.1.0 - 20.01.2020
 ------------------
 
