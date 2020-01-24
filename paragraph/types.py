@@ -130,7 +130,7 @@ class Op:
     Attributes:
         thread_safe: If False, the op is always executed in the main thread. Defaults to True.
     """
-    thread_safe = attr.ib(type=bool, default=True)
+    thread_safe = attr.ib(type=bool, default=True, kw_only=True)
 
     def __repr__(self):
         """Return the operation name
