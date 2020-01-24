@@ -25,7 +25,6 @@ Changed
 - attribute ``Op.thread_safe`` is now a keyword-only argument of ``__init__`` to permit attributes without default values in derived classes.
 
 
-
 1.1.1 - 23.01.2020
 ------------------
 
