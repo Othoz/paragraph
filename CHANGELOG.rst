@@ -17,7 +17,7 @@ Possible types of changes are:
 - ``Security`` in case of vulnerabilities
 
 
-1.2.0 - Unreleased
+1.2.0 - 27.01.2020
 ------------------
 
 Changed
