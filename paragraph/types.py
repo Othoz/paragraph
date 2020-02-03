@@ -220,6 +220,8 @@ def op(func: Callable) -> Op:
     presence of such arguments, it returns a Variable object symbolizing the result of the operation with the arguments passed in. In absence of variable
     arguments, the function returned is just equivalent to the function passed in, in particular it returns a value of the pristine return type.
 
+
+
     .. warning::
         Operations returned by this decorator are marked thread-safe by default. It is the user's responsibility to set `Op.thread_safe` to `False` where
         appropriate.
@@ -229,5 +231,6 @@ def op(func: Callable) -> Op:
     """
     op = Op()
     op._run = func
+    op.__doc__ = func.__doc__
 
     return op
