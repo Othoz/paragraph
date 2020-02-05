@@ -17,6 +17,14 @@ Possible types of changes are:
 - ``Security`` in case of vulnerabilities
 
 
+1.2.1 - 05.02.2020
+------------------
+
+Changed
+'''''''
+- The ``op`` decorator now copies the ``__doc__`` attribute of the underlying function onto the wrapping ``Op`` instance
+
+
 1.2.0 - 27.01.2020
 ------------------
 
