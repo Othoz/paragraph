@@ -17,11 +17,13 @@ from paragraph.types import op
 
 
 class WrappedModuleFinder:
-    """
-    Data package module loader finder. This class sits on `sys.meta_path` and returns the
-    loader it knows for a given path, if it knows a compatible loader.
-    """
+    """Paragraph virtual package finder
 
+    A module finder class that detects the ``paragraph.wrap`` prefix of the virtual package. It delegates the import of any module under that prefix to the
+    WrappedModuleLoader class below.
+
+    This class must be appended to ``sys.meta_path`` to be considered by Python's import system.
+    """
     @classmethod
     def find_spec(cls, fullname, path=None, target=None):
         """
@@ -34,6 +36,12 @@ class WrappedModuleFinder:
 
 
 class WrappedModuleLoader:
+    """Paragraph virtual package loader
+
+    A module loader class that imports modules under the ``paragraph.wrap`` prefix. This loader proceeds as follows:
+    - import the underlying module (i.e. the module whose qualified name follows the prefix ``paragraph.wrap``) locally,
+    - populate the virtual module with the callables in the underlying module wrapped by ``paragraph.op``.
+    """
     @classmethod
     def create_module(cls, spec):
         return None
@@ -41,6 +49,7 @@ class WrappedModuleLoader:
     @classmethod
     def exec_module(cls, module):
         if module.__name__ == "paragraph.wrap":
+            # module.__path__ is required, but may be just an empty list
             module.__path__ = []
             return module
 
