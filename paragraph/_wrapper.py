@@ -10,13 +10,14 @@ Example:
     >>> y = add.op(x, 2)
 """
 from importlib import import_module
+from importlib.abc import MetaPathFinder, Loader
 from importlib.machinery import ModuleSpec
 from typing import Callable
 
 from paragraph.types import op
 
 
-class WrappedModuleFinder:
+class WrappedModuleFinder(MetaPathFinder):
     """Paragraph virtual package finder
 
     A module finder class that detects the ``paragraph.wrap`` prefix of the virtual package. It delegates the import of any module under that prefix to the
@@ -35,7 +36,7 @@ class WrappedModuleFinder:
         return None
 
 
-class WrappedModuleLoader:
+class WrappedModuleLoader(Loader):
     """Paragraph virtual package loader
 
     A module loader class that imports modules under the ``paragraph.wrap`` prefix. This loader proceeds as follows:
