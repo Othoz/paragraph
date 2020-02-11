@@ -1,6 +1,10 @@
 Paragraph
 =========
 
+.. image:: https://api.codacy.com/project/badge/Grade/df8053917ccb473eba8b6820fe7b5284
+   :alt: Codacy Badge
+   :target: https://app.codacy.com/gh/Othoz/paragraph?utm_source=github.com&utm_medium=referral&utm_content=Othoz/paragraph&utm_campaign=Badge_Grade_Settings
+
 A pure Python micro-framework supporting seamless lazy and concurrent evaluation of computation graphs.
 
 .. image:: https://img.shields.io/pypi/v/paragraph.svg
