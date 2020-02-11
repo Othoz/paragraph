@@ -17,6 +17,15 @@ Possible types of changes are:
 - ``Security`` in case of vulnerabilities
 
 
+1.3.0 - Unreleased
+------------------
+
+Added
+'''''
+- The ``paragraph.wrap`` virtual package. Any installed module can be imported under that package, resulting in all top-level callables being wrapped as
+paragraph ops.
+
+
 1.2.1 - 05.02.2020
 ------------------
 
