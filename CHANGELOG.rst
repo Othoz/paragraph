@@ -23,7 +23,13 @@ Possible types of changes are:
 Added
 '''''
 - The ``paragraph.wrap`` virtual package. Any installed module can be imported under that package, resulting in all top-level callables being wrapped as
-paragraph ops.
+  paragraph ops.
+
+Changed
+'''''''
+- If the ``__call__`` method of an ``Op`` instance raises during execution of ``paragraph.session.evaluate``, the latter catches the exception, raises a
+  ``RuntimeError`` indicating the variable whose evaluation failed, and sets the original exception as the direct cause of the ``RuntimeError``. Note that
+  this currently only applies to single-threaded evaluations.
 
 
 1.2.1 - 05.02.2020
