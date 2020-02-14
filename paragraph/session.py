@@ -142,7 +142,10 @@ def evaluate(output: Iterable[Variable], args: Dict[Variable, Any], executor: Op
         if executor is not None and var.op.thread_safe:
             cache[var] = executor.submit(var.op, *pos_args, **kw_args)
         else:
-            cache[var] = var.op(*pos_args, **kw_args)
+            try:
+                cache[var] = var.op(*pos_args, **kw_args)
+            except Exception as err:
+                raise RuntimeError(f"Evaluating the variable {var} failed.") from err
 
     return [cache[var].result() if isinstance(cache[var], Future) else cache[var] for var in output]
 

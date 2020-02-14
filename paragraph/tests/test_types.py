@@ -15,8 +15,11 @@ class MockReq(Requirement):
         super().merge(other)
 
 
-def mock_op(name="") -> Op:
-    operation = op(MagicMock(__name__=name, return_value=f"{name}_return_value"))
+def mock_op(name="", exception=None) -> Op:
+    if exception is not None:
+        operation = op(MagicMock(__name__=name, return_value=f"{name}_return_value", side_effect=exception))
+    else:
+        operation = op(MagicMock(__name__=name, return_value=f"{name}_return_value"))
     operation.arg_requirements = MagicMock(return_value=MockReq("Arg requirement"))
 
     return operation

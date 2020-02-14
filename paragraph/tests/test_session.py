@@ -22,6 +22,20 @@ def graph():
 
 
 @pytest.fixture
+def graph_raising():
+    graph = lambda: None  # noqa: E731
+    op0 = mock_op("op0", exception=ValueError("raised by op0"))
+    graph.input = Variable("input")
+    output0 = op0(arg=graph.input)
+    op1 = mock_op("op1")
+    output1 = op1(graph.input, arg1=output0)
+
+    graph.output = [output0, output1]
+
+    return graph
+
+
+@pytest.fixture
 def thread_pool_executor():
     with ThreadPoolExecutor() as executor:
         yield executor
@@ -98,6 +112,13 @@ class TestEvaluate:
             _ = evaluate([graph.output[0]], args={graph.input: 0})
 
         assert len(record) == 0
+
+    @staticmethod
+    def test_exception_is_reraised(graph_raising):
+        with pytest.raises(RuntimeError) as err:
+            _ = evaluate([graph_raising.output[0]], args={graph_raising.input: 0})
+
+            assert hasattr(err, "__cause__")
 
 
 class TestSolve:
